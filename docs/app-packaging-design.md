@@ -36,9 +36,17 @@ Uninstalling is removing one directory and rewriting the index.
 ## Why the icon is a separate file
 
 The launcher draws `app.ICON` off a live instance today. Under lazy loading there is no instance
-until the app is opened, so the icon has to be readable on its own. `icon.rle` holds exactly the
-bytes that the in-module `ICON` tuple concatenates to: a depth byte, a width byte, a height byte,
-then the run-length data. The launcher reads it while drawing a page and drops it again.
+until the app is opened, so the icon has to be readable on its own. The launcher reads `icon.rle`
+while drawing a page and drops it again.
+
+`icon.rle` is always a depth byte, a width byte, a height byte, then the run-length data. That is
+already the 2-bit layout. wasp-os writes a 1-bit icon as a width, height and pixels triple with
+no header, so the builder adds one and `icon_of` turns it back into a triple. The two depths stay
+distinguishable because the launcher needs `rleblit` for a triple and `blit` for flat bytes, which
+is how it already tells an app's own `ICON` apart.
+
+An app with no `icon.png`, such as the template app, ships without the file and the launcher falls back
+to its generic icon.
 
 Keep `ICON` in the module as well, so the app still works when loaded and nothing in the existing
 app guide changes. The duplicate costs a couple of hundred bytes on a four megabyte chip.

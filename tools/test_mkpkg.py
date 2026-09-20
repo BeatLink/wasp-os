@@ -126,29 +126,36 @@ def test_compiled_module_is_mpy(build, tmp_path):
 
 
 @needs_mpy_cross
-def test_icon_matches_the_embedded_literal(build, tmp_path):
-    """The icon file must hold exactly the bytes the in-module ICON holds.
-
-    music_player is the reference: its committed literal and its icon.png
-    still agree.
-    """
+def test_one_bit_icon_header(build, tmp_path):
+    """The symbolic app icons are 1-bit and 48x48."""
     build('apps/music_player')
-    built = (tmp_path / 'music_player' / 'icon.rle').read_bytes()
+    icon = (tmp_path / 'music_player' / 'icon.rle').read_bytes()
 
-    source = open(os.path.join(ROOT_DIR, 'apps/music_player/app.py')).read()
-    embedded = extract_icon_literal(source)
-
-    assert built == embedded
+    assert icon[0] == 1
+    assert icon[1] == 48
+    assert icon[2] == 48
+    assert len(icon) > 3
 
 
 @needs_mpy_cross
-def test_icon_header(build, tmp_path):
-    build('apps/music_player')
-    icon = (tmp_path / 'music_player' / 'icon.rle').read_bytes()
-    depth, width, height = icon[0], icon[1], icon[2]
-    assert depth == 2
-    assert 0 < width <= 255
-    assert 0 < height <= 255
+def test_two_bit_icon_keeps_its_own_header(build, tmp_path):
+    """A full colour icon is encoded at 2 bits and already has the header."""
+    build('apps/flashlight')
+    icon = (tmp_path / 'flashlight' / 'icon.rle').read_bytes()
+
+    assert icon[0] == 2
+    assert 0 < icon[1] <= 255
+    assert 0 < icon[2] <= 255
+
+
+@needs_mpy_cross
+def test_an_app_without_an_icon_still_builds(build, tmp_path):
+    result = build('apps/template')
+
+    assert result['icon'] == 0
+    assert not (tmp_path / 'template' / 'icon.rle').exists()
+    meta = json.loads((tmp_path / 'template' / 'meta.json').read_text())
+    assert meta['icon'] is False
 
 
 @needs_mpy_cross
@@ -162,14 +169,3 @@ def test_zip_contains_the_package(build, tmp_path):
     assert 'music_player/meta.json' in names
 
 
-def extract_icon_literal(source):
-    """Pull the first module-level bytes tuple out of an app's source."""
-    import ast
-    import re
-
-    match = re.search(r'^(\w+)\s*=\s*\(\s*\n(\s*b[\'"].*?)\)\s*$',
-                      source, re.S | re.M)
-    assert match, 'no icon literal in the app source'
-    return b''.join(
-        ast.literal_eval(line.strip())
-        for line in match.group(2).strip().splitlines())

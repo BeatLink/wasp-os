@@ -262,12 +262,22 @@ def config_of(name):
 
 
 def icon_of(name):
-    """Read a package's launcher icon without importing its code."""
+    """Read a package's launcher icon without importing its code.
+
+    A 1-bit icon is returned as the width, height and pixels triple that
+    rleblit takes. A 2-bit icon is returned as the flat bytes that blit takes.
+    Both are what an app's own ICON would have been.
+    """
     try:
         with open(PKG_DIR + '/' + name + '/icon.rle', 'rb') as f:
-            return f.read()
+            blob = f.read()
     except OSError:
         return None
+    if len(blob) < 3:
+        return None
+    if blob[0] == 1:
+        return (blob[1], blob[2], blob[3:])
+    return blob
 
 
 def module_of(name):

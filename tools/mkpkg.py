@@ -147,12 +147,26 @@ def compile_module(mpy_cross, flags, source, target):
 
 
 def encode_icon(rle, source, target):
+    """Encode an icon into the package's self-describing icon file.
+
+    The file is always a depth byte, a width byte, a height byte, then the
+    run-length data. A 2-bit icon already carries that header. A 1-bit icon
+    comes back as width, height and pixels, so the header is added here.
+    """
     from PIL import Image
 
-    image = rle.encode_2bit(Image.open(source))
+    image = Image.open(source)
+    if image.mode == '1':
+        width, height, pixels = rle.encode(image)
+        blob = bytes((1, width, height)) + bytes(pixels)
+    else:
+        # The 2-bit encoder wants full colour, and its output starts with the
+        # depth, width and height already.
+        blob = bytes(rle.encode_2bit(image.convert('RGB')))
+
     with open(target, 'wb') as f:
-        f.write(bytes(image))
-    return len(image)
+        f.write(blob)
+    return len(blob)
 
 
 def copy_resources(source_dir, target_dir):

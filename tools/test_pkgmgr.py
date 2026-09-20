@@ -166,9 +166,23 @@ def test_config_of_is_empty_when_unset(flash, replies):
     assert pkgmgr.config_of('calculator') == {}
 
 
-def test_icon_of_reads_without_importing(flash, replies):
+def test_icon_of_returns_flat_bytes_for_a_two_bit_icon(flash, replies):
     make_package(flash, 'calculator')
     assert pkgmgr.icon_of('calculator') == b'\x02\x20\x20icon-data'
+
+
+def test_icon_of_returns_a_triple_for_a_one_bit_icon(flash, replies):
+    path = make_package(flash, 'symbolic')
+    (path / 'icon.rle').write_bytes(bytes((1, 48, 48)) + b'pixels')
+
+    assert pkgmgr.icon_of('symbolic') == (48, 48, b'pixels')
+
+
+def test_icon_of_ignores_a_truncated_file(flash, replies):
+    path = make_package(flash, 'broken')
+    (path / 'icon.rle').write_bytes(b'\x01')
+
+    assert pkgmgr.icon_of('broken') is None
 
 
 def test_icon_of_missing_package_is_none(flash, replies):
