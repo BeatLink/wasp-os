@@ -22,7 +22,8 @@
 	url = https://github.com/peterhinch/micropython-font-to-py
 [submodule "tools/ota-dfu"]
 	path = tools/ota-dfu
-	url = https://github.com/wasp-os/ota-dfu-python
+	url = https://github.com/BeatLink/ota-dfu-python
+	branch = gatttool-timeouts
 [submodule "reloader"]
 	path = reloader
 	url = https://github.com/wasp-os/wasp-reloader
