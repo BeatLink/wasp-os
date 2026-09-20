@@ -1,9 +1,9 @@
 # App packaging references
 
-Background for the installable app package format and the companion app protocol. Four
+Background for the installable app package format and the companion app protocol. Five
 reports: how apps are loaded today, what storage the PineTime has, whether apps can be
-loaded just in time, and where BLEFS fits. Written against NeoTime at commit 726cecf,
-September 2026.
+loaded just in time, where BLEFS fits, and whether internal flash placement can be chosen at
+runtime. Written against NeoTime at commit 726cecf, September 2026.
 
 ## 1. How apps are loaded today
 
@@ -139,13 +139,13 @@ spare internal-flash partition and have the package manager copy an installed `.
 things stand in the way: the fork pins an old MicroPython with no ROMFS, so the MicroPython
 upgrade comes first, and the application region is only about 320 KB shared with the firmware,
 so the partition would hold a handful of apps. It would still be the right home for always-on
-pieces such as the default watch face.
+pieces such as the default watch face. Section 5 revises this: the upgrade alone is not enough,
+because the nrf port cannot write a ROMFS partition.
 
 **Recommendation.** Build the package system around lazy loading now: packages live on
 `/flash`, the launcher holds descriptors, and code is loaded on launch and released on exit.
 Keep the descriptor format open to a later placement choice per package, external versus
-internal, once the MicroPython upgrade lands. Frozen modules then shrink to the system core plus
-whatever must never fail to load.
+internal. Frozen modules then shrink to the system core plus whatever must never fail to load.
 
 ## 4. BLEFS versus a protocol over the REPL
 
@@ -174,3 +174,92 @@ speaks it, including Gadgetbridge's file upload.
 
 **Recommendation.** NUS protocol first, with the command set shaped like BLEFS so a real BLEFS
 service can be added under it later without changing the companion app's package logic.
+
+## 5. Internal flash placement, ROMFS and the swap question
+
+The tempting idea is that because code can run from internal flash, internal flash could act as
+swap and relieve the RAM shortage. It cannot. What it can do is narrower and needs firmware work
+that does not exist in this port yet.
+
+### Why flash cannot be swap
+
+Three independent blockers, any one of which is fatal.
+
+- **No demand paging.** The nRF52832 is a Cortex-M4 with an optional MPU and no MMU. There are
+  no virtual addresses and no page faults, so an access to an evicted object cannot be trapped.
+- **Pointers are raw.** MicroPython's collector is mark and sweep and never moves objects.
+  Evicting one and faulting it back at another address would need every reference rewritten, and
+  the runtime has no way to find them.
+- **Writing is hostile.** Internal flash erases in 4 KB pages at roughly 85 ms each, endures
+  about 10,000 cycles, and writes go through the SoftDevice, which defers them to radio-idle
+  windows. Acceptable for an occasional install, unusable as a paging store.
+
+Execute in place is read-only and covers only immutable content, meaning bytecode and constant
+objects. Mutable state stays in RAM. So it never adds RAM, it only avoids spending RAM on code.
+
+### The saving is already banked for frozen apps
+
+A frozen app costs no heap for its bytecode today, so ROMFS would give it nothing. What ROMFS
+changes is which apps get that treatment and when the choice is made, not how much RAM exists.
+
+The flash budget makes the trade concrete. Measured from the build in the MicroPython upgrade
+worktree with `arm-none-eabi-size`:
+
+| | Bytes |
+|---|---|
+| Application window, 0x26000 to 0x78000 | 335,872 |
+| Built firmware, text plus data | 313,588 |
+| Spare | 22,284 |
+
+`memory.ld` computes `_app_size` by subtracting the ROMFS partition from the application window,
+so a partition is funded by removing frozen modules byte for byte. Moving an app from the
+firmware into the partition frees exactly what it consumes. Net flash and net RAM are both zero.
+What is gained is the ability to replace that app without a DFU.
+
+### The write path is missing on this port
+
+`ports/nrf/modules/nrf/flashbdev.c` implements `mp_vfs_rom_ioctl` for two operations only,
+`GET_NUMBER_OF_SEGMENTS` and `GET_SEGMENT`, and returns `-MP_EINVAL` for the rest. The three that
+write a partition, `WRITE_PREPARE`, `WRITE` and `WRITE_COMPLETE`, are unimplemented. The stm32
+port has them in its own `vfs_rom_ioctl.c`.
+
+Without an on-device write path the internal set can only be decided when the image is built,
+which is what freezing already does. **ROMFS with no write support buys nothing over frozen
+modules.** Its whole value here is that the set becomes settable at runtime.
+
+The ROMFS block is also compiled behind `MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE`, which the
+PineTime board sets to zero, so even the read side needs that flag turned on.
+
+### What runtime-settable placement would take
+
+Bundled into one firmware update, since each part needs a flash anyway:
+
+- The MicroPython upgrade already in flight.
+- Write ioctls for the nrf port, modelled on the stm32 file, cooperating with the SoftDevice
+  because flash writes wait for radio-idle windows.
+- `MICROPY_HW_ENABLE_INTERNAL_FLASH_STORAGE` and `MICROPY_VFS_ROM` enabled for the board.
+- A partition size in the board linker script, funded by un-freezing apps. The generic
+  `nrf52832_512k_64k.ld` uses 128K; the PineTime script sets nothing, so it defaults to zero.
+
+A ROMFS partition is a single image, not a directory that takes one more file. Promotion means
+rebuilding the image, erasing the partition and streaming it back. The phone can build the image.
+The watch must have nothing from that partition loaded while it rewrites, so it realistically
+ends in a soft reset. The companion app should present a resident set with an apply button, not a
+per-app install.
+
+### Why this sequences second
+
+Lazy loading and ROMFS attack different costs. Lazy loading changes when the heap is spent, and
+ROMFS changes how much is spent while an app is loaded. Once only one or two apps are ever loaded
+at a time, the per-app saving matters much less, so lazy loading captures most of the benefit on
+its own.
+
+The remaining niche is narrow but real: apps that stay resident permanently, such as the watch
+face, the step counter and the notification handling. Those are also the ones that would
+otherwise stay frozen. The case for ROMFS is specifically a user-chosen resident app, such as a
+third-party watch face someone wants always loaded.
+
+One caveat on never reflashing again. A firmware update that changes the bytecode version
+invalidates the ROMFS image and every external `.mpy` at once. The package manifest needs the ABI
+tag so the companion app can spot the mismatch and repopulate, rather than leaving a watch full of
+packages that will not import.
