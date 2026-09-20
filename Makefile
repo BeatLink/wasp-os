@@ -23,7 +23,7 @@ clean :
 		reloader/build-$(BOARD) reloader/src/boards/$(BOARD)/bootloader.h \
 		micropython/mpy-cross/build \
 		micropython/ports/nrf/build-$(BOARD)-s132 \
-		apps/*.mpy \
+		apps/*.mpy faces/*.mpy \
 		build-$(BOARD) \
 		wasp/boards/$(BOARD)/watch.py \
 		wasp/apps/user \
@@ -117,12 +117,16 @@ debug:
 		-ex "attach 1" \
 		-ex "load"
 
-apps/%.mpy: apps/%.py micropython/mpy-cross/mpy-cross
-	./micropython/mpy-cross/mpy-cross -mno-unicode -march=armv7m $<
-APPS_PY=$(wildcard apps/*.py)
-APPS_MPY=$(APPS_PY:%.py=%.mpy)
+apps/%.mpy: apps/%/app.py micropython/mpy-cross/mpy-cross
+	./micropython/mpy-cross/mpy-cross -mno-unicode -march=armv7m -o $@ $<
+faces/%.mpy: faces/%/app.py micropython/mpy-cross/mpy-cross
+	./micropython/mpy-cross/mpy-cross -mno-unicode -march=armv7m -o $@ $<
+APPS_PY=$(wildcard apps/*/app.py)
+APPS_MPY=$(patsubst apps/%/app.py,apps/%.mpy,$(APPS_PY))
+FACES_PY=$(wildcard faces/*/app.py)
+FACES_MPY=$(patsubst faces/%/app.py,faces/%.mpy,$(FACES_PY))
 .PHONY: apps
-apps: $(APPS_MPY)
+apps: $(APPS_MPY) $(FACES_MPY)
 
 docs: wasp/boards/manifest_user_apps.py
 	$(RM) -rf docs/build/html/*

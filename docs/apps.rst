@@ -9,21 +9,21 @@ Application Library
 Watch faces
 -----------
 
-.. automodule:: faces
+.. automodule:: apps.faces.app
 
-.. automodule:: clock
+.. automodule:: faces.clock.app
 
-.. automodule:: chrono
+.. automodule:: faces.chrono.app
 
-.. automodule:: dual_clock
+.. automodule:: faces.dual_clock.app
 
-.. automodule:: fibonacci_clock
+.. automodule:: faces.fibonacci_clock.app
 
-.. automodule:: week_clock
+.. automodule:: faces.week_clock.app
 
-.. automodule:: word_clock
+.. automodule:: faces.word_clock.app
 
-.. automodule:: resistor_clock
+.. automodule:: faces.resistor_clock.app
 
 Built-in
 --------
@@ -41,53 +41,51 @@ Built-in
 Applications
 ------------
 
-.. automodule:: alarm
+.. automodule:: apps.alarm.app
 
-.. automodule:: beacon
+.. automodule:: apps.beacon.app
 
-.. automodule:: calculator
+.. automodule:: apps.calculator.app
 
-.. automodule:: demo
+.. automodule:: apps.demo.app
 
-.. automodule:: disa_b_l_e
+.. automodule:: apps.disa_b_l_e.app
 
-.. automodule:: flashlight
+.. automodule:: apps.flashlight.app
 
-.. automodule:: gallery
+.. automodule:: apps.gallery.app
 
-.. automodule:: haiku
+.. automodule:: apps.haiku.app
 
-.. automodule:: heart
+.. automodule:: apps.heart.app
 
-.. automodule:: level
+.. automodule:: apps.level.app
 
-.. automodule:: morse
+.. automodule:: apps.morse.app
 
-.. automodule:: music_player
+.. automodule:: apps.music_player.app
 
-.. automodule:: phone_finder
+.. automodule:: apps.phone_finder.app
 
-.. automodule:: pomodoro
+.. automodule:: apps.pomodoro.app
 
-.. automodule:: sports
+.. automodule:: apps.sports.app
 
-.. automodule:: stopwatch
+.. automodule:: apps.stopwatch.app
 
-.. automodule:: test
+.. automodule:: apps.test.app
 
-.. automodule:: timer
+.. automodule:: apps.timer.app
 
-.. automodule:: weather
+.. automodule:: apps.weather.app
 
 Games
 -----
 
-.. automodule:: game_of_life
+.. automodule:: apps.game_of_life.app
 
-.. automodule:: play2048
+.. automodule:: apps.puzzle15.app
 
-.. automodule:: puzzle15
+.. automodule:: apps.snake.app
 
-.. automodule:: snake
-
-.. automodule:: four_in_a_row
+.. automodule:: apps.four_in_a_row.app

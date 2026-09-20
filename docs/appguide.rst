@@ -207,20 +207,20 @@ App naming conventions and placement
 ------------------------------------
 
 Your app must be named in a specific way and placed in the /apps directory to be compatible with wasp-os.
-Watch faces follow the same rules but are placed in the /watch_faces directory.
+Watch faces follow the same rules but are placed in the /faces directory.
 
-1. The name of the python file must be in snake case (ie: music_player.py)
-2. The class of your app must be the name of the file in pascal case with "App" appended (ie: MusicPlayerApp)
+1. Each app is a package: a directory named in snake case holding the code in app.py (ie: apps/music_player/app.py)
+2. The class of your app must be the name of the directory in pascal case with "App" appended (ie: MusicPlayerApp)
 3. The NAME variable in your app must short and will be used on the launcher screen (ie: NAME = 'Music')
 
 If you wish to submit your app to the project it must additionally meet these requirements:
 
 1. The app must be added to docs/apps.rst
 2. The app must be added to the README.rst
-3. A simulator screenshot must exist in the /res/screenshots directory having the name of the app class (ie: MusicPlayerApp.png). Press s in the simulator to take a screenshot.
+3. A simulator screenshot must exist in the app directory as screenshot.png (ie: apps/music_player/screenshot.png). Press s in the simulator to take a screenshot.
 4. The app must include a README comment at the top of the file (see existing apps)
-5. The app README must include a link to the simulator screenshot in the /res/screenshots directory
-6. If your app has an icon (encouraged) than the image used to generate the RLE must be in the /res/icons directory. Its name should be the snake case name of the app file with "_icon" appended. (ie: music_player_icon.png)
+5. The app README must include a link to the simulator screenshot in the app directory
+6. If your app has an icon (encouraged) than the image used to generate the RLE must be in the app directory as icon.png
 
 To check if your app meets these requirements you can run the following command:
 
@@ -468,7 +468,7 @@ Application entry points
 Applications provide entry points for the system manager to use to notify
 the application of a change in system state or an user interface event.
 
-.. automodule:: template
+.. automodule:: apps.template.app
    :members:
    :private-members:
    :special-members:

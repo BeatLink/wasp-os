@@ -14,3 +14,8 @@ wasp/apps/user
 wasp/appregistry.py
 .idea
 .vscode
+venv
+.claude/
+# Files the simulator test suite writes to the repo root.
+Morse.txt
+alarms.txt

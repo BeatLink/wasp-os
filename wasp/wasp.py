@@ -183,17 +183,19 @@ class Manager():
         :param object no_except: Ignore exceptions when instantiating applications
         """
         if isinstance(app, str):
+            # Import into a throwaway namespace so the module can be unloaded once the app is instantiated.
             modname = app[:app.rindex('.')]
-            exec('import ' + modname)
+            namespace = {}
+            exec('import ' + modname, namespace)
             if no_except:
                 try:
-                    app = eval(app + '()')
+                    app = eval(app + '()', namespace)
                 except:
                     app = None
             else:
-                    app = eval(app + '()')
-            exec('del ' + modname)
-            exec('del sys.modules["' + modname + '"]')
+                    app = eval(app + '()', namespace)
+            del namespace
+            del sys.modules[modname]
             if not app:
                 return
 

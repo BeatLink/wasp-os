@@ -1,1 +1,1 @@
-../apps/hello.py
+../apps/hello/app.py
