@@ -64,28 +64,16 @@ wasp/boards/$(BOARD_SAFE)/watch.py : wasp/boards/$(BOARD_SAFE)/watch.py.in
 	(cd wasp; ../tools/preprocess.py boards/$(BOARD)/watch.py.in > boards/$(BOARD)/watch.py) \
 		|| ($(RM) wasp/boards/$(BOARD)/watch.py; false)
 
-micropython/mpy-cross/mpy-cross:
-	$(MAKE) -C micropython/mpy-cross \
-		CWARN="-Wall -Wno-error"
-		# ^ Disable some Werrors from GCC>=13, specifically
-		#     - dangling-pointer
-		#     - enum-int-mismatch
-		#   TODO update micropython and remove.
-		#   https://github.com/wasp-os/wasp-os/issues/493
+micropython/mpy-cross/build/mpy-cross:
+	$(MAKE) -C micropython/mpy-cross
 
-micropython: build-$(BOARD_SAFE) wasp/boards/manifest_user_apps.py wasp/boards/$(BOARD_SAFE)/watch.py micropython/mpy-cross/mpy-cross
+micropython: build-$(BOARD_SAFE) wasp/boards/manifest_user_apps.py wasp/boards/$(BOARD_SAFE)/watch.py micropython/mpy-cross/build/mpy-cross
 	$(RM) micropython/ports/nrf/build-$(BOARD)-s132/frozen_content.c
 	$(MAKE) -C micropython/ports/nrf \
 		BOARD=$(BOARD) SD=s132 \
 		MICROPY_VFS_LFS2=1 \
 		FROZEN_MANIFEST=$(CURDIR)/wasp/boards/$(BOARD)/manifest.py \
-		USER_C_MODULES=$(CURDIR)/wasp/modules \
-		COPT="-Wno-error"
-		# ^ Disable some Werrors from GCC>=13, specifically
-		#     - dangling-pointer
-		#     - enum-int-mismatch
-		#   TODO update micropython and remove.
-		#   https://github.com/wasp-os/wasp-os/issues/493
+		USER_C_MODULES=$(CURDIR)/wasp/modules
 	$(PYTHON) -m nordicsemi dfu genpkg \
 		--dev-type 0x0052 \
 		--application micropython/ports/nrf/build-$(BOARD)-s132/firmware.hex \
@@ -117,10 +105,10 @@ debug:
 		-ex "attach 1" \
 		-ex "load"
 
-apps/%.mpy: apps/%/app.py micropython/mpy-cross/mpy-cross
-	./micropython/mpy-cross/mpy-cross -mno-unicode -march=armv7m -o $@ $<
-faces/%.mpy: faces/%/app.py micropython/mpy-cross/mpy-cross
-	./micropython/mpy-cross/mpy-cross -mno-unicode -march=armv7m -o $@ $<
+apps/%.mpy: apps/%/app.py micropython/mpy-cross/build/mpy-cross
+	./micropython/mpy-cross/build/mpy-cross -march=armv7m -o $@ $<
+faces/%.mpy: faces/%/app.py micropython/mpy-cross/build/mpy-cross
+	./micropython/mpy-cross/build/mpy-cross -march=armv7m -o $@ $<
 APPS_PY=$(wildcard apps/*/app.py)
 APPS_MPY=$(patsubst apps/%/app.py,apps/%.mpy,$(APPS_PY))
 FACES_PY=$(wildcard faces/*/app.py)
