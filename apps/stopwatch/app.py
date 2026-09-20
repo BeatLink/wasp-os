@@ -10,15 +10,28 @@ Simple stop/start watch with support for split times.
     :width: 179
 """
 import wasp
-import icons
 import fonts
+
+# 1-bit RLE, 48x48, generated from apps/stopwatch/icon.png, 133 bytes
+icon = (
+    48, 48,
+    b'\x11\r"\x0f!\x0f!\x0f!\x0f"\r&\x07*\x05'
+    b'+\x05)\t$\x0f\x1f\x13\x05\x04\x12\x17\x02\x06\x10 '
+    b'\x0f!\x0e!\x0e\x0e\x03\x10\x0e\x0e\x05\x0e\x0f\x0e\x05\x0e'
+    b'\x0e\x0f\x05\x0f\r\x0f\x05\x0f\x0c\x10\x05\x10\x0b\x10\x05\x10'
+    b'\x0b\x10\x05\x10\n\x11\x05\x11\t\x11\x05\x11\t\x11\x05\x11'
+    b'\t\x11\x05\x11\t\x11\x05\x11\t\x11\x05\x11\t\x11\x05\x11'
+    b"\t\x12\x03\x12\t'\n%\x0b%\x0b%\x0c#\r#"
+    b'\x0e!\x0f!\x10\x1f\x12\x1d\x14\x1b\x16\x19\x18\x17\x1b\x13'
+    b'\x1f\x0f$\t\x14'
+)
 
 class StopwatchApp():
     """Stopwatch application."""
     # Stopwatch requires too many pixels to fit into the launcher
 
     NAME = 'Stopclock'
-    ICON = icons.app
+    ICON = icon
 
     def __init__(self):
         self._timer = wasp.widgets.Stopwatch(120-36)

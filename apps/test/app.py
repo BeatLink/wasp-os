@@ -20,10 +20,25 @@ import machine
 
 from apps.system.pager import PagerApp
 
+# 1-bit RLE, 48x48, generated from apps/test/icon.png, 145 bytes
+icon = (
+    48, 48,
+    b'\r\x16\x19\x18\x18\x18\x18\x18\x18\x18\x19\x16\x1c\x06\x06\x06'
+    b'\x1e\x06\x06\x06\x1e\x06\x06\x06\x1e\x06\x06\x06\x1e\x06\x06\x06'
+    b'\x1e\x06\x06\x06\x1e\x06\x06\x06\x1e\x06\x06\x06\x1e\x06\x06\x06'
+    b'\x1e\x06\x06\x06\x1e\x06\x06\x06\x1e\x06\x06\x06\x1e\x06\x06\x06'
+    b'\x1e\x06\x06\x06\x1e\x06\x06\x06\x1d\x07\x06\x07\x1c\x06\x08\x07'
+    b'\x1a\x07\x08\x07\x19\x07\n\x07\x18\x07\n\x07\x17\x07\x0c\x07'
+    b'\x15\x08\x0c\x08\x14\x07\x0e\x07\x13\x07\x10\x07\x12\x1e\x11 '
+    b'\x0f"\x0e"\r$\x0c$\x0b&\t(\x08(\x07*'
+    b'\x06*\x06*\x06*\x06*\x07(\x08(\t&\x0c"'
+    b'\x07'
+)
+
 class TestApp():
     """Self test application."""
     NAME = 'Self Test'
-    ICON = icons.app
+    ICON = icon
 
     def __init__(self):
         self.tests = ('Alarm', 'Button', 'Checkbox', 'Crash', 'Colours', 'Fill', 'Fill-H', 'Fill-V', 'Free Mem', 'Line', 'Notifications', 'RLE', 'String', 'Touch', 'Wrap')
@@ -251,7 +266,7 @@ class TestApp():
             self._spinner.value = len(wasp.system.notifications)
             self._spinner.draw()
         elif self.test == 'RLE':
-            draw.blit(self.ICON, 120-48, 120-32)
+            draw.blit(self.ICON, 120-24, 120-24)
 
         self.scroll.draw()
         wasp.watch.display.mute(False)

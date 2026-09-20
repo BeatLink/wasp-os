@@ -59,7 +59,7 @@ NeoTime.
 | Notifications viewer | Yes: 5 stored, preview mode, call buttons | Yes: pager over notification queue, clear confirmation | [x] wasp-os / [ ] history of 5 |
 | Settings | Yes: 15 entries, see section 5 | Yes: 5 pages, see section 5 | [x] wasp-os |
 | Software (enable/disable apps) | No (compile time) | Yes: runtime checkboxes, auto-discovers apps on flash | [x] |
-| Launcher | Yes: 6 icons per page tile grid | Yes: 4 icons per page grid | [x] |
+| Launcher | Yes: 6 icons per page tile grid | Yes: 9 icons per page tile grid, page indicator | [x] |
 | Battery info | Yes: %, mV, charging arc | Partial: battery meter widget only | [ ] |
 | System info | Yes: 5 pages incl. tasks, heap, reset reason, IDs | Partial: Self Test shows free memory | [ ] |
 | Firmware validation | Yes: validate or roll back | No (bootloader handles recovery) | [ ] |
@@ -94,7 +94,7 @@ NeoTime.
 | Per-app availability check | `IsAvailable()` hides apps missing resources | `no_except` flag and Software app discovery | [x] |
 | App lifecycle hooks | Constructor, `Refresh`, `OnTouchEvent`, `OnButtonPushed` | `foreground`, `background`, `sleep`, `wake`, `tick`, `touch`, `swipe`, `press`, `preview` | [x] |
 | Screen transitions | Directional slide animations, return direction | Display muted during switch, no animation | [ ] transitions |
-| App icons | FontAwesome glyphs | 2-bit RLE icon per app, `ICON` attribute | [x] |
+| App icons | FontAwesome glyphs | FontAwesome glyphs as 48x48 1-bit RLE per app, `ICON` attribute | [x] |
 | Package layout | One directory per app | Fork: `apps/NAME/app.py` with icon and screenshot; build still expects flat files | [~] wire packages into `wasp.toml`, Makefile and tests |
 | Runtime app enable/disable | No | Yes (Software app) | [x] |
 | Wake lock | RAII `WakeLock` | `keep_awake()` per tick | [x] |
@@ -173,7 +173,7 @@ NeoTime.
 | Widgets | LVGL objects plus Counter, DotIndicator, PageIndicator, StatusIcons, List, CheckboxList | BatteryMeter, Clock, NotificationBar, StatusBar, ScrollIndicator, Button, ToggleButton, Checkbox, GfxButton, Slider, Spinner, Stopwatch, ConfirmationView | [x] / [ ] page indicator / [ ] dot indicator |
 | Drawing primitives | LVGL | fill, blit, 1-bit and 2-bit RLE, string with alignment, wrap, line, polar, lighten, darken | [x] |
 | Fonts | JetBrains Mono, Open Sans, FontAwesome, Material Icons, segment fonts, external fonts on flash | sans18/24/28/36, clock, clock_dual bitmap fonts | [x] / [ ] more sizes / [ ] fonts loadable from flash |
-| Icons | FontAwesome glyphs and RLE images | 2-bit RLE icon set, `rle_encode.py` | [x] |
+| Icons | FontAwesome glyphs and RLE images | Monochrome icon set from FontAwesome, `gen_app_icons.py` | [x] |
 | Images from flash | `.bin` LVGL images via resources package | BMP gallery, RLE from `haiku.rle` | [x] |
 | Colour palette | 18 named colours | Algorithmic 256-colour CLUT, RGB565 | [x] |
 | Text wrapping | LVGL | `wrap()` | [x] |
