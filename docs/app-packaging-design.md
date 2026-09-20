@@ -135,6 +135,25 @@ must not run further ahead than the buffer holds.
 Integrity is already covered per packet by the BLE link layer. `recv` still returns a 32-bit
 additive sum so a truncated or duplicated window is caught.
 
+## Where packages come from
+
+Packages ship bundled with the companion app. They are built by `mkpkg.py` at release time and
+embedded in the app as base64 in a generated module, which needs no Metro asset configuration, no
+file system access and no network, and behaves the same on web as on a device. A package is a few
+kilobytes, so a starter set costs very little.
+
+Two other sources are worth adding later, and the install flow should stay shaped so they slot in
+beside the bundled set rather than replacing it.
+
+- **A repository.** The app fetches an index over HTTP and pulls packages on demand. This is the
+  one that makes third-party apps practical. It needs an index format, hosting, a version and
+  update story, and a decision about whether packages are signed.
+- **The phone's own files.** The user picks a package `.zip` with the system picker. Little work
+  and the natural loop for someone developing their own app, but nothing to browse.
+
+Both need the same ABI check and the same transfer driver, so only the source of the bundle
+changes.
+
 ## Configuration
 
 The phone renders the `config` schema from the manifest, then calls `pkg.cfg` with the values as
@@ -186,10 +205,16 @@ MicroPython 1.29 removed that flag while the Makefile still uses it for the pinn
 - [x] `src/protocol/transfer.ts`: chunk a file into windows, wait for each acknowledgement,
       verify the sum, then install, uninstall, enable and configure on top.
       34 tests across `packages.test.ts` and `transfer.test.ts`.
-- [ ] Decide where packages come from: bundled with the app, fetched from a repository, or
-      picked from the phone's filesystem. This shapes the install screen.
+- [x] Decide where packages come from: bundled with the app, with a repository and a file picker
+      left for later. See the section above.
+- [ ] A generator that turns `mkpkg.py` output into the app's bundled package module.
 - [ ] Installed list with enable toggles, install and uninstall flows.
 - [ ] Settings form generated from the `config` schema.
+
+### Phase 5, later sources
+
+- [ ] A package repository: index format, hosting, updates, and whether packages are signed.
+- [ ] Installing a package `.zip` picked from the phone's files.
 
 ### Phase 4, firmware
 
