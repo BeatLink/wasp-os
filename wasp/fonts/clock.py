@@ -1,4 +1,4 @@
-# 2-bit RLE, generated from res/clock_0.png, 220 bytes
+# 2-bit RLE, generated from wasp/resources/clock_0.png, 220 bytes
 clock_0 = (
     b'\x02'
     b'0<'
@@ -18,7 +18,7 @@ clock_0 = (
     b'\x19\xd6\x1c\xd2\x1f\xcf$\xca\x16'
 )
 
-# 2-bit RLE, generated from res/clock_1.png, 127 bytes
+# 2-bit RLE, generated from wasp/resources/clock_1.png, 127 bytes
 clock_1 = (
     b'\x02'
     b'0<'
@@ -32,7 +32,7 @@ clock_1 = (
     b'\xe0\x10\xe0\x10\xe0\x10\xe0\x10\xe0\x10\xe08'
 )
 
-# 2-bit RLE, generated from res/clock_2.png, 134 bytes
+# 2-bit RLE, generated from wasp/resources/clock_2.png, 134 bytes
 clock_2 = (
     b'\x02'
     b'0<'
@@ -47,7 +47,7 @@ clock_2 = (
     b'\n\xe67'
 )
 
-# 2-bit RLE, generated from res/clock_3.png, 142 bytes
+# 2-bit RLE, generated from wasp/resources/clock_3.png, 142 bytes
 clock_3 = (
     b'\x02'
     b'0<'
@@ -62,7 +62,7 @@ clock_3 = (
     b'\x0f\xe0\x10\xdf\x12\xdc\x18\xd6\x1f\xcd\x17'
 )
 
-# 2-bit RLE, generated from res/clock_4.png, 182 bytes
+# 2-bit RLE, generated from wasp/resources/clock_4.png, 182 bytes
 clock_4 = (
     b'\x02'
     b'0<'
@@ -80,7 +80,7 @@ clock_4 = (
     b'\xc8?\x00'
 )
 
-# 2-bit RLE, generated from res/clock_5.png, 140 bytes
+# 2-bit RLE, generated from wasp/resources/clock_5.png, 140 bytes
 clock_5 = (
     b'\x02'
     b'0<'
@@ -95,7 +95,7 @@ clock_5 = (
     b'\x11\xde\x13\xdb\x18\xd6\x1f\xcd\x17'
 )
 
-# 2-bit RLE, generated from res/clock_6.png, 200 bytes
+# 2-bit RLE, generated from wasp/resources/clock_6.png, 200 bytes
 clock_6 = (
     b'\x02'
     b'0<'
@@ -114,7 +114,7 @@ clock_6 = (
     b'\x1e\xd0#\xca\x15'
 )
 
-# 2-bit RLE, generated from res/clock_7.png, 121 bytes
+# 2-bit RLE, generated from wasp/resources/clock_7.png, 121 bytes
 clock_7 = (
     b'\x02'
     b'0<'
@@ -128,7 +128,7 @@ clock_7 = (
     b"(\xc8'\xc9?\x0e"
 )
 
-# 2-bit RLE, generated from res/clock_8.png, 208 bytes
+# 2-bit RLE, generated from wasp/resources/clock_8.png, 208 bytes
 clock_8 = (
     b'\x02'
     b'0<'
@@ -147,7 +147,7 @@ clock_8 = (
     b'\x11\xde\x13\xdc\x15\xda\x18\xd6\x1c\xd2"\xca\x16'
 )
 
-# 2-bit RLE, generated from res/clock_9.png, 200 bytes
+# 2-bit RLE, generated from wasp/resources/clock_9.png, 200 bytes
 clock_9 = (
     b'\x02'
     b'0<'
@@ -166,7 +166,7 @@ clock_9 = (
     b'\x1b\xd3"\xcb\x19'
 )
 
-# 2-bit RLE, generated from res/clock_colon.png, 61 bytes
+# 2-bit RLE, generated from wasp/resources/clock_colon.png, 61 bytes
 clock_colon = (
     b'\x02'
     b'0<'

@@ -19,7 +19,7 @@ import icons
 import time
 import watch
 
-# 2-bit RLE, generated from res/feet.png, 240 bytes
+# 2-bit RLE, generated from wasp/resources/feet.png, 240 bytes
 feet = (
     b'\x02'
     b'00'
