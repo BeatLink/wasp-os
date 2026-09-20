@@ -1,8 +1,9 @@
 # App packaging references
 
-Background for the installable app package format and the companion app protocol. Three
-reports: how apps are loaded today, what storage the PineTime has, and whether apps can be
-loaded just in time. Written against NeoTime at commit 726cecf, September 2026.
+Background for the installable app package format and the companion app protocol. Four
+reports: how apps are loaded today, what storage the PineTime has, whether apps can be
+loaded just in time, and where BLEFS fits. Written against NeoTime at commit 726cecf,
+September 2026.
 
 ## 1. How apps are loaded today
 
@@ -133,3 +134,31 @@ pieces such as the default watch face.
 Keep the descriptor format open to a later placement choice per package, external versus
 internal, once the MicroPython upgrade lands. Frozen modules then shrink to the system core plus
 whatever must never fail to load.
+
+## 4. BLEFS versus a protocol over the REPL
+
+BLEFS is separate work. The MicroPython upgrade does not bring it.
+
+**What it is.** BLEFS is Adafruit's BLE file transfer protocol: an application-level GATT
+service with a version characteristic and a transfer characteristic that carries framed read,
+write, delete, mkdir, listdir and move commands. InfiniTime implements it in its own C++ against
+NimBLE. It is a protocol spec, not a library, so any firmware that wants it writes its own server.
+
+**What the upgrade changes.** Nothing about BLEFS itself. The watch exposes only the Nordic UART
+Service, implemented in C inside the nrf port. Adding a second GATT service means either C in the
+port, as NUS is done now, or Python through whatever BLE API the port compiles in. The old nrf
+port has `ubluepy`, which can define custom services and characteristics; whether the wasp-os
+build enables it is unconfirmed because the submodule is not checked out. A newer MicroPython may
+give a cleaner API for that, but it will still not contain a file-transfer service.
+
+**The alternative that needs no BLE work.** Define the file protocol on top of the REPL channel
+that already exists: a small frozen Python module on the watch accepts framed commands over NUS,
+the same way `GB()` does, and the companion app's existing transport talks to it. This works
+today with no change to the BLE stack.
+
+**Trade-off.** A NUS-based protocol is the fast path and stays entirely in Python. BLEFS costs a
+GATT service in the firmware but buys compatibility with the InfiniTime tooling that already
+speaks it, including Gadgetbridge's file upload.
+
+**Recommendation.** NUS protocol first, with the command set shaped like BLEFS so a real BLEFS
+service can be added under it later without changing the companion app's package logic.
