@@ -3,7 +3,8 @@
 	url = https://github.com/wasp-os/wasp-bootloader
 [submodule "micropython"]
 	path = micropython
-	url = https://github.com/wasp-os/micropython
+	url = https://github.com/BeatLink/micropython
+	branch = v1.29-wasp-os
 [submodule "tools/intelhex"]
 	path = tools/intelhex
 	url = https://github.com/python-intelhex/intelhex
@@ -27,4 +28,5 @@
 	url = https://github.com/wasp-os/wasp-reloader
 [submodule "wasp/modules/bma42x-upy"]
 	path = wasp/modules/bma42x-upy
-	url = https://github.com/wasp-os/bma42x-upy
+	url = https://github.com/BeatLink/bma42x-upy
+	branch = micropython-1.29
