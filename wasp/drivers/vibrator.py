@@ -22,8 +22,7 @@ class Vibrator(object):
         """
         pin.value(active_low)
         self.pin = pin
-        self.freq = PWM.FREQ_16MHZ
-        self.period = 16000
+        self.freq = 1000
         self.active_low = active_low
 
     def pulse(self, duty=25, ms=40):
@@ -32,8 +31,7 @@ class Vibrator(object):
         :param int duty: Duty cycle, in percent.
         :param int ms:   Duration, in milliseconds.
         """
-        pwm = PWM(0, self.pin, freq=self.freq, duty=duty, period=self.period)
-        pwm.init()
+        pwm = PWM(self.pin, freq=self.freq, duty=duty)
         time.sleep_ms(ms)
         pwm.deinit()
         self.pin.value(self.active_low)

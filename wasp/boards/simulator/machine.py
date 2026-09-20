@@ -64,7 +64,8 @@ class Pin(object):
         self.value(v)
 
 class PWM(Tracer):
-    FREQ_16MHZ = 'FREQ_16MHZ'
+    def __init__(self, pin, freq=None, duty=None):
+        pass
 
 class SPI(object):
     def __init__(self, id):
