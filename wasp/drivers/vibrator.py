@@ -22,18 +22,28 @@ class Vibrator(object):
         """
         pin.value(active_low)
         self.pin = pin
-        self.freq = PWM.FREQ_16MHZ
-        self.period = 16000
+        self.freq = 1000
         self.active_low = active_low
+        self._pwm = None
 
     def pulse(self, duty=25, ms=40):
         """Briefly pulse the motor.
 
+        Hold on to the PWM block rather than asking for one each time.
+        Deinitialising a block stops it but does not hand it back, so a
+        driver that took a fresh one per pulse would run the hardware out
+        of them after a few buzzes.
+
         :param int duty: Duty cycle, in percent.
         :param int ms:   Duration, in milliseconds.
         """
-        pwm = PWM(0, self.pin, freq=self.freq, duty=duty, period=self.period)
-        pwm.init()
-        time.sleep_ms(ms)
-        pwm.deinit()
-        self.pin.value(self.active_low)
+        pwm = self._pwm
+        if pwm is None:
+            pwm = self._pwm = PWM(self.pin, freq=self.freq, duty=duty)
+        else:
+            pwm.init(freq=self.freq, duty=duty)
+        try:
+            time.sleep_ms(ms)
+        finally:
+            pwm.deinit()
+            self.pin.value(self.active_low)
