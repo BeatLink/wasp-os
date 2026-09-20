@@ -95,8 +95,19 @@ def _swapmin(bitNext, bitLast, low, depth, lob, upb):
 def rndColumn():
     return int(wasp.watch.rtc.uptime) % _NCOLUMN  # time used as RNG to save space
 
+# 1-bit RLE, 32x32, generated from apps/four_in_a_row/icon.png, 75 bytes
+icon = (
+    32, 32,
+    b'\x0c\x08\x15\x0e\x10\x12\r\x14\x0b\x16\t\x18\x07\x1a\x05\x1c'
+    b'\x04\x1c\x03\x1e\x02\r\x04\r\x02\x0b\x08\x0b\x01\x0b\n\x16'
+    b'\n\x15\x0c\x14\x0c\x14\x0c\x14\x0c\x15\n\x16\n\x0b\x01\x0b'
+    b'\x08\x0b\x02\r\x04\r\x02\x1e\x03\x1c\x04\x1c\x05\x1a\x07\x18'
+    b'\t\x16\x0b\x14\r\x12\x10\x0e\x15\x08\x0c'
+)
+
 class FourInARowApp():
     NAME = '4 ina row'
+    ICON = icon
 
     def __init__(self):
         self.screen = _INTRO

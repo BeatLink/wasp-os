@@ -20,10 +20,22 @@ import machine
 
 from apps.system.pager import PagerApp
 
+# 1-bit RLE, 32x32, generated from apps/test/icon.png, 97 bytes
+icon = (
+    32, 32,
+    b'\t\x0e\x11\x10\x10\x10\x11\x0e\x13\x04\x04\x04\x14\x04\x04\x04'
+    b'\x14\x04\x04\x04\x14\x04\x04\x04\x14\x04\x04\x04\x14\x04\x04\x04'
+    b'\x14\x04\x04\x04\x14\x04\x04\x04\x14\x04\x04\x04\x14\x04\x04\x04'
+    b'\x13\x05\x04\x05\x12\x04\x06\x04\x11\x05\x06\x05\x10\x04\x08\x05'
+    b'\x0e\x05\x08\x05\r\x05\n\x05\x0c\x14\x0b\x16\t\x18\x08\x18'
+    b'\x07\x1a\x06\x1a\x05\x1c\x04\x1c\x04\x1c\x04\x1c\x05\x1a\x07\x18'
+    b'\x04'
+)
+
 class TestApp():
     """Self test application."""
     NAME = 'Self Test'
-    ICON = icons.app
+    ICON = icon
 
     def __init__(self):
         self.tests = ('Alarm', 'Button', 'Checkbox', 'Crash', 'Colours', 'Fill', 'Fill-H', 'Fill-V', 'Free Mem', 'Line', 'Notifications', 'RLE', 'String', 'Touch', 'Wrap')
@@ -58,6 +70,10 @@ class TestApp():
             self._benchmark_string()
         elif self.test == 'Touch':
             draw.string('Button', 0, 108, width=240)
+
+    def crash(self):
+        """Throw an exception, so the crash handler can be tested."""
+        raise RuntimeError('Deliberate crash')
 
     def swipe(self, event):
         tests = self.tests
@@ -251,7 +267,7 @@ class TestApp():
             self._spinner.value = len(wasp.system.notifications)
             self._spinner.draw()
         elif self.test == 'RLE':
-            draw.blit(self.ICON, 120-48, 120-32)
+            draw.blit(self.ICON, 120-16, 120-16)
 
         self.scroll.draw()
         wasp.watch.display.mute(False)

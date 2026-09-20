@@ -43,7 +43,7 @@ feet = (
 class StepCounterApp():
     """Step counter application."""
     NAME = 'Steps'
-    ICON = icons.app
+    ICON = icons.steps
 
     def __init__(self):
         watch.accel.reset()

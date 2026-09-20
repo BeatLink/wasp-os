@@ -10,15 +10,25 @@ Simple stop/start watch with support for split times.
     :width: 179
 """
 import wasp
-import icons
 import fonts
+
+# 1-bit RLE, 32x32, generated from apps/stopwatch/icon.png, 89 bytes
+icon = (
+    32, 32,
+    b'\x0c\x08\x17\n\x16\n\x17\x08\x1a\x04\x1c\x04\x1a\x08\x16\x0c'
+    b'\x04\x02\x0c\x10\x01\x04\n\x16\t\x16\t\n\x02\n\n\t'
+    b'\x04\t\t\x0b\x02\x0b\x08\x0b\x02\x0b\x07\x0c\x02\x0c\x06\x0c'
+    b'\x02\x0c\x06\x0c\x02\x0c\x06\x0c\x02\x0c\x06\x0b\x04\x0b\x06\x0c'
+    b'\x02\x0c\x06\x1a\x06\x1a\x07\x18\x08\x18\t\x16\n\x16\x0b\x14'
+    b'\r\x12\x0f\x10\x12\x0c\x16\x08\x0c'
+)
 
 class StopwatchApp():
     """Stopwatch application."""
     # Stopwatch requires too many pixels to fit into the launcher
 
     NAME = 'Stopclock'
-    ICON = icons.app
+    ICON = icon
 
     def __init__(self):
         self._timer = wasp.widgets.Stopwatch(120-36)

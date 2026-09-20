@@ -298,99 +298,83 @@ def render_c(image, fname, indent, depth):
             i = 0
     print('\n};')
 
-def render_py(image, fname, indent, depth):
+def render_py_str(image, fname, indent, depth, name=None):
+    """Render an encoded image as a python literal."""
     extra_indent = ' ' * indent
+    if name is None:
+        name = varname(fname)
+    out = []
     if len(image) == 3:
         (x, y, pixels) = image
-        print(f'{extra_indent}# {depth}-bit RLE, {x}x{y}, generated from {fname}, '
-              f'{len(image[2])} bytes')
-        print(f'{extra_indent}{varname(fname)} = (')
-        print(f'{extra_indent}    {x}, {y},')
+        out.append(f'{extra_indent}# {depth}-bit RLE, {x}x{y}, generated from {fname}, '
+                   f'{len(image[2])} bytes')
+        out.append(f'{extra_indent}{name} = (')
+        out.append(f'{extra_indent}    {x}, {y},')
     else:
         x = image[1]
         y = image[2]
         pixels = image[3:]
-        print(f'{extra_indent}# {depth}-bit RLE, {x}x{y}, generated from {fname}, '
-              f'{len(image)} bytes')
-        print(f'{extra_indent}{varname(fname)} = (')
-        print(f'{extra_indent}    {image[0:1]}')
-        print(f'{extra_indent}    {image[1:3]}')
+        out.append(f'{extra_indent}# {depth}-bit RLE, {x}x{y}, generated from {fname}, '
+                   f'{len(image)} bytes')
+        out.append(f'{extra_indent}{name} = (')
+        out.append(f'{extra_indent}    {image[0:1]}')
+        out.append(f'{extra_indent}    {image[1:3]}')
 
     # Split the bytestring to ensure each line is short enough to
     # be absorbed on the target if needed.
     for i in range(0, len(pixels), 16):
-        print(f'{extra_indent}    {pixels[i:i+16]}')
-    print(f'{extra_indent})')
+        out.append(f'{extra_indent}    {pixels[i:i+16]}')
+    out.append(f'{extra_indent})')
+    return '\n'.join(out) + '\n'
 
+def render_py(image, fname, indent, depth):
+    print(render_py_str(image, fname, indent, depth), end='')
 
-def decode_to_ascii(image):
-    (sx, sy, rle) = image
-    data = bytearray(2*sx)
-    dp = 0
-    black = ord('#')
-    white = ord(' ')
-    color = black
+def main():
+    parser = argparse.ArgumentParser(description='RLE encoder tool.')
+    parser.add_argument('files', nargs='*',
+                        help='files to be encoded')
+    parser.add_argument('--ascii', action='store_true',
+                        help='Run the resulting image(s) through an ascii art decoder')
+    parser.add_argument('--c', action='store_true',
+                        help='Render the output as C instead of python')
+    parser.add_argument('--clut', default=0, type=int,
+                        help='Lookup a colour value in the CLUT')
+    parser.add_argument('--indent', default=0, type=int,
+                        help='Add extra indentation in the generated code')
+    parser.add_argument('--1bit', action='store_const', const=1, dest='depth',
+                        help='Generate 1-bit image')
+    parser.add_argument('--2bit', action='store_const', const=2, dest='depth',
+                        help='Generate 2-bit image')
+    parser.add_argument('--8bit', action='store_const', const=8, dest='depth',
+                        help='Generate 8-bit image')
 
-    for rl in rle:
-        while rl:
-            data[dp] = color
-            data[dp+1] = color
-            dp += 2
-            rl -= 1
+    args = parser.parse_args()
 
-            if dp >= (2*sx):
-                print(data.decode('utf-8'))
-                dp = 0
+    if args.clut:
+        print(f'{args.clut} maps to {clut8_rgb888(args.clut):06x} (RGB888) or {clut8_rgb565(args.clut):04x} (RGB565)')
 
-        if color == black:
-            color = white
-        else:
-            color = black
-
-    # Check the image is the correct length
-    assert(dp == 0)
-
-parser = argparse.ArgumentParser(description='RLE encoder tool.')
-parser.add_argument('files', nargs='*',
-                    help='files to be encoded')
-parser.add_argument('--ascii', action='store_true',
-                    help='Run the resulting image(s) through an ascii art decoder')
-parser.add_argument('--c', action='store_true',
-                    help='Render the output as C instead of python')
-parser.add_argument('--clut', default=0, type=int,
-                    help='Lookup a colour value in the CLUT')
-parser.add_argument('--indent', default=0, type=int,
-                    help='Add extra indentation in the generated code')
-parser.add_argument('--1bit', action='store_const', const=1, dest='depth',
-                    help='Generate 1-bit image')
-parser.add_argument('--2bit', action='store_const', const=2, dest='depth',
-                    help='Generate 2-bit image')
-parser.add_argument('--8bit', action='store_const', const=8, dest='depth',
-                    help='Generate 8-bit image')
-
-args = parser.parse_args()
-
-if args.clut:
-    print(f'{args.clut} maps to {clut8_rgb888(args.clut):06x} (RGB888) or {clut8_rgb565(args.clut):04x} (RGB565)')
-
-if args.depth == 8:
-    encoder = encode_8bit
-elif args.depth == 2:
-    encoder = encode_2bit
-elif args.depth == 1:
-    encoder = encode
-else:
-    encoder = encode_2bit
-    args.depth = 2
-
-for fname in args.files:
-    image = encoder(Image.open(fname))
-
-    if args.c:
-        render_c(image, fname, args.indent, args.depth)
+    if args.depth == 8:
+        encoder = encode_8bit
+    elif args.depth == 2:
+        encoder = encode_2bit
+    elif args.depth == 1:
+        encoder = encode
     else:
-        render_py(image, fname, args.indent, args.depth)
+        encoder = encode_2bit
+        args.depth = 2
 
-    if args.ascii:
-        print()
-        decode_to_ascii(image)
+    for fname in args.files:
+        image = encoder(Image.open(fname))
+
+        if args.c:
+            render_c(image, fname, args.indent, args.depth)
+        else:
+            render_py(image, fname, args.indent, args.depth)
+
+        if args.ascii:
+            print()
+            decode_to_ascii(image)
+
+if __name__ == '__main__':
+    main()
