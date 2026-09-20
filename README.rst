@@ -221,8 +221,12 @@ System apps:
    :alt: Small application for disabling bluetooth to save power and enhance security
    :width: 179
 
-.. image:: res/screenshots/LauncherApp.png
-   :alt: Application launcher running on the wasp-os simulator
+.. image:: res/screenshots/GridLauncherApp.png
+   :alt: Grid application launcher running on the wasp-os simulator
+   :width: 179
+
+.. image:: res/screenshots/ListLauncherApp.png
+   :alt: List application launcher running on the wasp-os simulator
    :width: 179
 
 .. image:: res/screenshots/SettingsApp.png

@@ -1,18 +1,30 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Copyright (C) 2020 Daniel Thompson
 
-"""Application launcher
-~~~~~~~~~~~~~~~~~~~~~~~
+"""List application launcher
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. figure:: res/screenshots/LauncherApp.png
+.. figure:: res/screenshots/ListLauncherApp.png
     :width: 179
+
+An alternative to the grid launcher that lists application names five to a
+page. Select it from main.py after the system has started::
+
+    from apps.system.list_launcher import ListLauncherApp
+    wasp.system.launcher = ListLauncherApp()
 """
 
 import wasp
+import fonts
 import icons
 
-class LauncherApp():
-    """An application launcher application."""
+from micropython import const
+
+_ROWS = const(5)
+_ROW_HEIGHT = const(48)
+
+class ListLauncherApp():
+    """An application launcher showing a list of names."""
     NAME = 'Launcher'
     ICON = icons.app
 
@@ -48,9 +60,7 @@ class LauncherApp():
 
     def touch(self, event):
         page = self._get_page(self._page)
-        x = event[1]
-        y = event[2]
-        app = page[2 * (y // 120) + (x // 120)]
+        app = page[event[2] // _ROW_HEIGHT]
         if app:
             wasp.system.switch(app)
         else:
@@ -60,33 +70,30 @@ class LauncherApp():
     def _num_pages(self):
         """Work out what the highest possible pages it."""
         num_apps = len(wasp.system.launcher_ring)
-        return (num_apps + 3) // 4
+        return (num_apps + _ROWS - 1) // _ROWS
 
     def _get_page(self, i):
         apps = wasp.system.launcher_ring
-        page = apps[4*i: 4*(i+1)]
-        while len(page) < 4:
+        page = apps[_ROWS*i: _ROWS*(i+1)]
+        while len(page) < _ROWS:
             page.append(None)
         return page
 
     def _draw(self):
         """Redraw the display from scratch."""
-        def draw_app(app, x, y):
-            if not app:
-                return
-            draw.blit(app.ICON if 'ICON' in dir(app) else icons.app, x+13, y+12)
-            draw.set_color(wasp.system.theme('mid'))
-            draw.string(app.NAME, x, y+120-30, 120)
-
         draw = wasp.watch.drawable
         page_num = self._page
         page = self._get_page(page_num)
-        
+
         draw.fill()
-        draw_app(page[0],   0,   0)
-        draw_app(page[1], 120,   0)
-        draw_app(page[2],   0, 120)
-        draw_app(page[3], 120, 120)
+        draw.set_font(fonts.sans24)
+        for i, app in enumerate(page):
+            if not app:
+                break
+            y = i * _ROW_HEIGHT
+            draw.set_color(wasp.system.theme('bright'))
+            draw.string(app.NAME, 16, y + 12)
+            draw.fill(wasp.system.theme('mid'), 0, y + _ROW_HEIGHT - 1, 216, 1)
 
         scroll = self._scroll
         scroll.up = page_num > 0
