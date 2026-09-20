@@ -12,6 +12,7 @@ freeze('../..', manifest_240x240.manifest + manifest_user_apps.manifest +
     (
         'boot.py',
         'draw565.py',
+        'events.py',
         'drivers/bma421.py',
         'drivers/battery.py',
         'drivers/cst816s.py',
@@ -21,6 +22,7 @@ freeze('../..', manifest_240x240.manifest + manifest_user_apps.manifest +
         'drivers/st7789.py',
         'drivers/vibrator.py',
         'gadgetbridge.py',
+        'pin_handler.py',
         'ppg.py',
         'shell.py',
         'wasp.py',

@@ -17,70 +17,17 @@
 import gc
 import machine
 import micropython
-import steplogger
 import sys
 import watch
 import widgets
 import appregistry
 
+from apps.system import steplogger
 from apps.system.launcher import LauncherApp
 from apps.system.pager import PagerApp, CrashApp, NotificationApp
 from apps.system.step_counter import StepCounterApp
-
-class EventType():
-    """Enumerated interface actions.
-
-    MicroPython does not implement the enum module so EventType
-    is simply a regular object which acts as a namespace.
-    """
-    DOWN = 1
-    UP = 2
-    LEFT = 3
-    RIGHT = 4
-    TOUCH = 5
-
-    HOME = 255
-    BACK = 254
-    NEXT = 253
-
-class EventMask():
-    """Enumerated event masks.
-    """
-    TOUCH = 0x0001
-    SWIPE_LEFTRIGHT = 0x0002
-    SWIPE_UPDOWN = 0x0004
-    BUTTON = 0x0008
-    NEXT = 0x0010
-
-class PinHandler():
-    """Pin (and Signal) event generator.
-
-    TODO: Currently this driver doesn't actually implement any
-    debounce but it will!
-    """
-
-    def __init__(self, pin):
-        """
-        :param Pin pin: The pin to generate events from
-        """
-        self._pin = pin
-        self._value = pin.value()
-
-    def get_event(self):
-        """Receive a pin change event.
-
-        Check for a pending pin change event and, if an event is pending,
-        return it.
-
-        :return: boolean of the pin state if an event is received, None
-                 otherwise.
-        """
-        new_value = self._pin.value()
-        if self._value == new_value:
-            return None
-
-        self._value = new_value
-        return new_value
+from events import EventType, EventMask
+from pin_handler import PinHandler
 
 def _key_app(d):
     """Get a sort key for apps."""
