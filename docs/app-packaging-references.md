@@ -50,8 +50,17 @@ Everything reaches the watch through the REPL over the Nordic UART Service.
 - `tools/wasptool --upload` pastes source lines into `shell.upload(path)` on the watch, which
   writes them to a file. `--binary` streams base64 chunks of 64 bytes into an open file through
   a one-line lambda. Both are slow but need nothing beyond the REPL.
-- Gadgetbridge messages use the same channel: the phone sends `\x10GB({...})\n` and the REPL
-  evaluates it against `wasp/gadgetbridge.py`.
+- Gadgetbridge messages use the same channel: the phone sends `GB({...})` as a line of Python
+  and the REPL evaluates it against `wasp/gadgetbridge.py`, where `main.py` has already pulled
+  `GB` into the REPL namespace with `from gadgetbridge import *`.
+- Gadgetbridge itself prefixes that line with `\x10`, but that is an Espruino convention, not a
+  wasp-os one. Nothing in wasp-os looks for it. It survives only because the MicroPython line
+  editor inserts a character just when it falls between 32 and 126, so a byte of 0x10 is
+  discarded. That byte is `CHAR_CTRL_P`, "recall previous history line", and the editor acts on
+  it when `MICROPY_REPL_EMACS_KEYS` is set. The setting follows the ROM feature level, which the
+  nrf port leaves at core features, so the key handling is compiled out today. A build at extra
+  features would turn every prefixed message into the previous line plus the new one. New code
+  should send the bare line and leave the prefix to Gadgetbridge.
 - There is no file-transfer service. The roadmap lists BLEFS as not done.
 
 ### What blocks a clean package-by-package flow
@@ -83,14 +92,17 @@ through the REPL or add a proper file service.
 
 ## 2. Storage spaces on the PineTime
 
-The exact linker values live in the `micropython` and `bootloader` submodules, which are not
-checked out in this tree. The sub-divisions below are approximate.
+Figures read from `boards/nrf52832_512k_64k_bldr78.ld` and `boards/s132_6.1.1.ld` in the nrf port.
 
 | Space | Size | What lives there | How it changes |
 |---|---|---|---|
-| Internal flash (nRF52832) | 512 KB | SoftDevice S132 BLE stack (about 150 KB), wasp-bootloader (about 32 KB at the top), and the MicroPython image with every frozen module in between (roughly 320 KB) | Only by DFU flash. Frozen apps execute in place here, which is why they are cheap on RAM. |
+| Internal flash (nRF52832) | 512 KB | SoftDevice S132 from 0 to 0x26000, 152 KB. The MicroPython image with every frozen module from 0x26000 to 0x78000, 328 KB. wasp-bootloader in the last 32 KB. | Only by DFU flash. Frozen apps execute in place here, which is why they are cheap on RAM. |
 | External SPI NOR | 4 MB | The littlefs2 volume at `/flash`: `main.py`, `apps/`, app data files, step logs, gallery images | Writable at runtime over the REPL. This is where installable packages go. wasp-os uses nothing else here, unlike InfiniTime, which reserves an OTA slot. |
-| RAM (nRF52832) | 64 KB | The SoftDevice reserves the bottom slice, then the MicroPython stack and heap. The PNVRAM block at `0x200039c0` marks roughly where application RAM begins. | The heap is the real ceiling. With the default app set the watch has only a few tens of KB free after boot, and every enabled app holds its instance and any flash-loaded bytecode there. |
+| RAM (nRF52832) | 64 KB | The SoftDevice reserves the first 0x39c0, about 14.5 KB, which is why the PNVRAM block sits at `0x200039c0`. The stack takes 8 KB. What is left, a little under 42 KB, is the MicroPython heap, and the link fails if it drops below 32 KB. | The heap is the real ceiling and cannot be raised. Every enabled app holds its instance and any flash-loaded bytecode there. |
+
+There is no spare region in internal flash. The linker sets `_fs_size = 0`, so the whole 328 KB
+application window is firmware, and any partition carved out of it comes directly out of the
+frozen modules.
 
 Two consequences for the package design:
 
