@@ -121,6 +121,11 @@ def encode(im):
     rl = 0
     px = pixels[0, 0]
 
+    # The decoder starts on the background colour, so an image whose first
+    # pixel is foreground needs an empty background run ahead of it.
+    if px:
+        rle.append(0)
+
     def encode_pixel(px, rl):
         while rl > 255:
             rle.append(255)
