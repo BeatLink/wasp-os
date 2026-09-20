@@ -78,8 +78,9 @@ Reading one index beats reading N manifests, both for boot time and for heap.
 ## Import and lazy loading
 
 `wasp.system.register` gains a lazy path that appends a descriptor rather than an instance. The
-descriptor carries `NAME`, the module path, the class name and the icon path, which is all the
-launcher needs to draw a page.
+descriptor carries `NAME`, the module path and the class name, and exposes `ICON` as a property
+that reads `icon.rle` on demand. The grid launcher asks for `ICON` through `dir(app)` and falls
+back to a generic icon, so a descriptor satisfies it without the launcher changing.
 
 `wasp.system.switch` materialises a descriptor before calling `foreground`, and releases the
 instance when the app goes to background, followed by a collection. Apps marked `resident` are
@@ -103,7 +104,7 @@ already splits and parses.
 | `pkg.recv(path, size)` | Receive exactly `size` bytes into `path` |
 | `pkg.rm(name)` | Delete a package and its index entry |
 | `pkg.enable(name)` / `pkg.disable(name)` | Update the persisted enabled set |
-| `pkg.cfg(name, json)` | Write `config.json` for a package |
+| `pkg.cfg(name, json)` | Write `config.json` for a package, values as a JSON string |
 | `pkg.reindex()` | Rebuild the index by scanning |
 
 `recv` is the only one that leaves line mode. It has two transfer modes.
@@ -136,8 +137,8 @@ additive sum so a truncated or duplicated window is caught.
 
 ## Configuration
 
-The phone renders the `config` schema from the manifest, then calls `pkg.cfg`. The manager writes
-`config.json` beside the app. On instantiation the manager calls `configure(values)` on the app
+The phone renders the `config` schema from the manifest, then calls `pkg.cfg` with the values as
+a JSON string. The manager parses it and writes `config.json` beside the app. On instantiation the manager calls `configure(values)` on the app
 when the class defines it, otherwise the app reads the file itself in `foreground`.
 
 ## Firmware changes needed
@@ -180,9 +181,14 @@ MicroPython 1.29 removed that flag while the Makefile still uses it for the pinn
 
 ### Phase 3, companion app
 
-- [ ] `src/protocol/packages.ts`: the command encoders and the reply types.
-- [ ] Transfer driver: chunk a file into windows, wait for each acknowledgement, verify the sum.
-- [ ] Installed list with enable toggles, install and uninstall flows, ABI check before transfer.
+- [x] `src/protocol/packages.ts`: the command encoders, the reply types and the ABI check.
+      Names and paths are validated before interpolation, since a command is Python source.
+- [x] `src/protocol/transfer.ts`: chunk a file into windows, wait for each acknowledgement,
+      verify the sum, then install, uninstall, enable and configure on top.
+      34 tests across `packages.test.ts` and `transfer.test.ts`.
+- [ ] Decide where packages come from: bundled with the app, fetched from a repository, or
+      picked from the phone's filesystem. This shapes the install screen.
+- [ ] Installed list with enable toggles, install and uninstall flows.
 - [ ] Settings form generated from the `config` schema.
 
 ### Phase 4, firmware

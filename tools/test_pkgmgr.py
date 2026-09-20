@@ -271,3 +271,22 @@ def test_forget_clears_every_module_level(flash, replies):
 
     for name in ('pkg', 'pkg.calculator', 'pkg.calculator.app'):
         assert name not in real_sys.modules
+
+
+def test_cfg_accepts_a_json_string(flash, replies):
+    make_package(flash, 'calculator')
+    pkgmgr.reindex()
+
+    pkgmgr.cfg('calculator', '{"loud": true, "steps": 3}')
+
+    assert pkgmgr.config_of('calculator') == {'loud': True, 'steps': 3}
+
+
+def test_cfg_rejects_bad_json(flash, replies):
+    make_package(flash, 'calculator')
+    pkgmgr.reindex()
+
+    pkgmgr.cfg('calculator', '{not json')
+
+    assert replies[-1]['ok'] is False
+    assert replies[-1]['err'] == 'bad json'

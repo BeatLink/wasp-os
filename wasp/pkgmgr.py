@@ -237,11 +237,21 @@ def disable(name):
 
 
 def cfg(name, values):
-    """Store a package's settings, as sent by the companion app."""
+    """Store a package's settings, as sent by the companion app.
+
+    The phone sends a JSON string rather than a literal, because Python and
+    JSON spell their booleans and their null differently.
+    """
     path = PKG_DIR + '/' + name
     if not _is_dir(path):
         _reply(ok=False, err='not installed')
         return
+    if isinstance(values, str):
+        try:
+            values = json.loads(values)
+        except ValueError:
+            _reply(ok=False, err='bad json')
+            return
     _save(path + '/config.json', values)
     _reply(ok=True, name=name)
 
