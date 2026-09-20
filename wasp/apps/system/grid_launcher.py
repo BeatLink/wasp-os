@@ -18,8 +18,8 @@ import icons
 _EDGES = (4, 83, 161)
 # Width and height of a tile.
 _TILE = 75
-# Offset from the tile to the 48x48 icon centred on it.
-_INSET = (_TILE - 48) // 2
+# Offset from the tile to the 32x32 icon centred on it.
+_INSET = (_TILE - 32) // 2
 # Colour of a tile, a dark grey that lets the white icons carry the page.
 _TILE_COLOR = 0x3186
 

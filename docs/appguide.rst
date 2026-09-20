@@ -221,7 +221,7 @@ If you wish to submit your app to the project it must additionally meet these re
 4. The app must include a README comment at the top of the file (see existing apps)
 5. The app README must include a link to the simulator screenshot in the app directory
 6. If your app has an icon (encouraged) than the image used to generate the RLE must be in the app directory as icon.png
-7. The icon must be a 48x48 monochrome image encoded as a 1-bit RLE, so the launcher can draw it on its tile in any colour.
+7. The icon must be a 32x32 monochrome image encoded as a 1-bit RLE, so the launcher can draw it on its tile in any colour.
    Add your app to the table in tools/gen_app_icons.py and run the tool to pick a Font Awesome glyph and generate both files.
 
 To check if your app meets these requirements you can run the following command:

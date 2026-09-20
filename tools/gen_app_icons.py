@@ -29,11 +29,15 @@ GLYPHMAP = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         'fontawesome', 'glyphmap.json')
 
 # Size of the square the glyph is fitted into.
-SIZE = 48
+SIZE = 32
 
 # The launcher tiles, drawn behind the icons.
-BACKGROUND = ('wasp/apps/system/grid_launcher.py', 'background',
-              'res/ui/backgrounds/3x3.png', 'res/ui/backgrounds/3x3.svg')
+BACKGROUNDS = (
+    ('wasp/apps/system/grid_launcher.py', 'background',
+     'res/ui/backgrounds/3x3.png', 'res/ui/backgrounds/3x3.svg'),
+    ('wasp/apps/system/list_launcher.py', 'background',
+     'res/ui/backgrounds/4x1.png', 'res/ui/backgrounds/4x1.svg'),
+)
 
 # Glyph for each app, as (source file, variable, PNG, glyph name).
 ICONS = (
@@ -139,9 +143,9 @@ def bake(svg, png):
 def main():
     glyphs = json.load(open(GLYPHMAP))
 
-    (source, name, png, svg) = BACKGROUND
-    replace(source, name, rle_encode.encode(bake(svg, png)), svg)
-    print('{:<40} {:<24} {}'.format(source, name, svg))
+    for (source, name, png, svg) in BACKGROUNDS:
+        replace(source, name, rle_encode.encode(bake(svg, png)), svg)
+        print('{:<40} {:<24} {}'.format(source, name, svg))
 
     for (source, name, png, glyph) in ICONS:
         if glyph not in glyphs:

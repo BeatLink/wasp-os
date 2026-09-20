@@ -31,15 +31,13 @@ from apps.system.pager import PagerApp
 
 class GalleryApp():
     NAME = 'Gallery'
-    # 1-bit RLE, 48x48, generated from apps/gallery/icon.png, 87 bytes
+    # 1-bit RLE, 32x32, generated from apps/gallery/icon.png, 55 bytes
     ICON = (
-        48, 48,
-        b'\x94(\x06,\x03.\x02.\x01i\x03+\x07)\x07('
-        b"\t'\t'\t'\t(\x07*\x05>\x03,\x05+"
-        b"\x05*\x07(\t'\t&\x0b$\r#\r\x1a\x03\x05"
-        b'\x0f\x18\x05\x03\x11\x16\x06\x02\x12\x15\x08\x01\x13\x14\x1d\x12'
-        b'\x1f\x10 \x0f"\r$\x0c$\x0c$\r"g\x01.'
-        b'\x02.\x03,\x06(\x94'
+        32, 32,
+        b'B\x1c\x03\x1e\x01F\x02\x1d\x04\x1b\x06\x1a\x06\x1a\x06\x1b'
+        b'\x04)\x02\x1d\x04\x1c\x04\x1b\x06\x19\x08\x17\t\x11\x03\x03'
+        b'\n\x10\x03\x02\x0c\x0e\x13\x0c\x14\x0b\x16\t\x18\x08\x18\x08'
+        b'\x18D\x01\x1e\x03\x1cB'
     )
 
     def foreground(self):
@@ -70,7 +68,7 @@ class GalleryApp():
     def _invalid_file(self, filename):
         draw = wasp.watch.drawable
         draw.string('Invalid BMP file', 0, 10, width=240)
-        draw.blit(self.ICON, 96, 96)
+        draw.blit(self.ICON, 104, 104)
         draw.line(72,52, 168,148, 3, 0xf800)
 
     def _draw(self):
