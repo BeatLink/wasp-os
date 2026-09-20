@@ -38,12 +38,61 @@ System
    :members:
    :undoc-members:
 
-.. automodule:: steplogger
+.. automodule:: events
    :members:
    :undoc-members:
 
-.. automodule:: widgets
+.. automodule:: pin_handler
    :members:
+
+.. automodule:: apps.system.steplogger
+   :members:
+   :undoc-members:
+
+Widgets
+-------
+
+.. automodule:: widgets
+
+.. automodule:: widgets.battery_meter
+   :members:
+
+.. automodule:: widgets.clock
+   :members:
+
+.. automodule:: widgets.notification_bar
+   :members:
+
+.. automodule:: widgets.status_bar
+   :members:
+
+.. automodule:: widgets.scroll_indicator
+   :members:
+
+.. automodule:: widgets.button
+   :members:
+
+.. automodule:: widgets.togglebutton
+   :members:
+
+.. automodule:: widgets.checkbox
+   :members:
+
+.. automodule:: widgets.gfxbutton
+   :members:
+
+.. automodule:: widgets.slider
+   :members:
+
+.. automodule:: widgets.spinner
+   :members:
+
+.. automodule:: widgets.stopwatch
+   :members:
+
+.. automodule:: widgets.confirmation_view
+   :members:
+
 
 Device drivers
 --------------
