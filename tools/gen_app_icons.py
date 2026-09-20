@@ -45,6 +45,9 @@ CORNERS = (
 # Glyph for each app, as (source file, variable, PNG, glyph name).
 ICONS = (
     ('apps/alarm/app.py', 'icon', 'apps/alarm/icon.png', 'bell'),
+    ('apps/alarm/app.py', 'plus_icon', 'apps/alarm/plus.png', 'plus'),
+    ('apps/alarm/app.py', 'trash_icon', 'apps/alarm/trash.png', 'trash-can'),
+    ('apps/alarm/app.py', 'save_icon', 'apps/alarm/save.png', 'check'),
     ('apps/beacon/app.py', 'ICON', 'apps/beacon/icon.png', 'tower-broadcast'),
     ('apps/calculator/app.py', 'calc', 'apps/calculator/icon.png', 'calculator'),
     ('apps/demo/app.py', 'demo_icon', 'apps/demo/icon.png', 'wand-magic-sparkles'),
