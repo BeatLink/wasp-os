@@ -13,7 +13,10 @@
 
 import shutil
 import sys
-import tomli
+try:
+    import tomllib as tomli
+except ImportError:
+    import tomli
 
 
 def _snake_case_to_pascal_case(s):
