@@ -274,7 +274,6 @@ class Manager():
         """Cached copy of the current vibrator pulse duration in milliseconds"""
         return self._nfylev_ms
 
-<<<<<<< HEAD
     def _retire(self):
         """Background the foreground application and let go of it."""
         app = self.app
@@ -289,7 +288,7 @@ class Manager():
         self.app = None
         self.app_entry = None
         gc.collect()
-=======
+
     def _resolve(self, app):
         """Build an application from its entry, if it is not built already.
 
@@ -307,7 +306,6 @@ class Manager():
             except:
                 return None
         return (app.load(), app)
->>>>>>> c72bfc5 (feat(ui): slide pages in using the panel's own scrolling)
 
     def switch(self, app):
         """Switch to the requested application.
@@ -317,36 +315,24 @@ class Manager():
         the launcher occupy memory. An application referenced from elsewhere,
         by a pending alarm for instance, stays alive on that reference.
         """
-<<<<<<< HEAD
         if isinstance(app, AppEntry):
             if self.app_entry is app and self.app:
                 return
-            entry = app
             # Let the outgoing application go before building the new one.
             # Two of them will not fit at once, and the one being left is
             # usually the launcher, which is the larger.
             self._retire()
-            if entry.no_except:
-                try:
-                    app = entry.load()
-                except:
-                    app = None
-            else:
-                app = entry.load()
-            if not app:
-                # Nothing is running now, so fall back to the watch face
-                # rather than leave the system with no application at all.
-                face = self.quick_ring[0]
-                if entry is not face:
-                    self.switch(face)
-                return
-        else:
-            entry = None
-=======
+
         loaded = self._resolve(app)
-        if loaded:
-            self._switch(*loaded)
->>>>>>> c72bfc5 (feat(ui): slide pages in using the panel's own scrolling)
+        if not loaded:
+            # Nothing is running if the retire above emptied the foreground,
+            # so fall back to the watch face rather than leave the system
+            # with no application at all.
+            face = self.quick_ring[0]
+            if not self.app and app is not face:
+                self.switch(face)
+            return
+        self._switch(*loaded)
 
     def _switch(self, app, entry):
         """Switch to an application that is already built.
@@ -394,8 +380,16 @@ class Manager():
         because just 80 rows can be staged ahead of the display, so anything
         else is switched the usual way.
         """
+        if isinstance(app, AppEntry):
+            if self.app_entry is app and self.app:
+                return
+            self._retire()
+
         loaded = self._resolve(app)
         if not loaded:
+            face = self.quick_ring[0]
+            if not self.app and app is not face:
+                self.switch(face)
             return
         (app, entry) = loaded
 
