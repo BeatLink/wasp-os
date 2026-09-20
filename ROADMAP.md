@@ -22,7 +22,7 @@ NeoTime.
 
 | Area | InfiniTime | wasp-os | NeoTime |
 |---|---|---|---|
-| Language / runtime | C++20 on FreeRTOS, LVGL 7, NimBLE | MicroPython (nRF port, old MicroPython release) with frozen modules | [x] MicroPython |
+| Language / runtime | C++20 on FreeRTOS, LVGL 7, NimBLE | MicroPython (nRF port, old MicroPython release) with frozen modules | [x] MicroPython 1.29 |
 | Supported watches | PineTime, Moy-TFK5/TIN5/TON5/UNK clones | PineTime, Colmi P8, Senbono K9, DS-D6, 96Boards Nitrogen | [x] wasp-os set |
 | Display | ST7789 240x240 over DMA SPI, hardware scroll for transitions | ST7789 240x240 over SPI, line buffer, no framebuffer | [x] |
 | Touch | CST816S with gestures (tap, double tap, long tap, 4 swipes) | CST816S with tap and 4 swipes; K9 button-only touch | [x] |
@@ -318,7 +318,7 @@ From wasp-os:
 - [ ] K9 touch coordinates are not decoded; the K9 is button-only.
 - [ ] `shell.download()` is broken.
 - [ ] Newer Colmi P8 revisions have an unsupported step-counter part.
-- [ ] MicroPython is old; GCC 13 and newer need `-Wno-error` workarounds (upstream issue 493).
+- [x] MicroPython is old (wasp-os pins a 1.12 base); NeoTime tracks 1.29, so the `-Wno-error` workarounds for GCC 13 and newer are gone.
 - [ ] Distance estimation in the step counter (0.5 list).
 - [ ] Use SoftDevice sleep logic, fix BLE hangs, asynchronous SPI chip select for double buffering (future list).
 - [ ] Bootloader: stay in bootloader after battery run-down, power-off without splash, colour boot logo (future list).
