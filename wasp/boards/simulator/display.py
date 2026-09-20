@@ -23,7 +23,7 @@ WIDTH = 240
 HEIGHT = 240
 
 SKIN = {
-    'fname' : 'res/simulator_skin.png',
+    'fname' : 'wasp/boards/simulator/simulator_skin.png',
     'size' : (337, 427),
     'button_profile' : 9,
     'offset' : (53, 93)

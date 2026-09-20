@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Copyright (C) 2020 Daniel Thompson
 
-# 2-bit RLE, generated from res/battery.png, 104 bytes
+# 2-bit RLE, generated from wasp/resources/battery.png, 104 bytes
 battery = (
     b'\x02'
     b'\x18 '
@@ -14,7 +14,7 @@ battery = (
     b'\x10\xc8P\xff%'
 )
 
-# 2-bit RLE, generated from res/bomb.png, 100 bytes
+# 2-bit RLE, generated from wasp/resources/bomb.png, 100 bytes
 bomb = (
     b'\x02'
     b'  '
@@ -27,7 +27,7 @@ bomb = (
     b'\x0e'
 )
 
-# 2-bit RLE, generated from res/app_icon.png, 224 bytes
+# 2-bit RLE, generated from wasp/resources/app_icon.png, 224 bytes
 app = (
     b'\x02'
     b'`@'
@@ -47,7 +47,7 @@ app = (
     b'\xf02\xec?Xf;d<d<d\x1e'
 )
 
-# 2-bit RLE, 96x64, generated from res/clock_icon.png, 419 bytes
+# 2-bit RLE, 96x64, generated from wasp/resources/clock_icon.png, 419 bytes
 clock = (
     b'\x02'
     b'`@'
@@ -79,7 +79,7 @@ clock = (
     b'-\xf2/\xf02\xec?Xf;d<d<d\x1e'
 )
 
-# 2-bit RLE, generated from res/software_icon.png, 460 bytes
+# 2-bit RLE, generated from wasp/resources/software_icon.png, 460 bytes
 software = (
     b'\x02'
     b'`@'
@@ -114,7 +114,7 @@ software = (
     b'\x81f;d<d<d\x1e'
 )
 
-# 2-bit RLE, generated from res/settings_icon.png, 468 bytes
+# 2-bit RLE, generated from wasp/resources/settings_icon.png, 468 bytes
 settings = (
     b'\x02'
     b'`@'
@@ -150,7 +150,7 @@ settings = (
     b'\x1e'
 )
 
-# 2-bit RLE, generated from res/torch_icon.png, 245 bytes
+# 2-bit RLE, generated from wasp/resources/torch_icon.png, 245 bytes
 torch = (
     b'\x02'
     b'`@'
@@ -172,21 +172,21 @@ torch = (
     b'\xff\x95'
 )
 
-# 2-bit RLE, generated from res/up_arrow.png, 19 bytes
+# 2-bit RLE, generated from wasp/resources/up_arrow.png, 19 bytes
 up_arrow = (
     b'\x02'
     b'\x10\t'
     b'\x07\xc2\r\xc4\x0b\xc6\t\xc8\x07\xca\x05\xcc\x03\xce\x01\xe0'
 )
 
-# 2-bit RLE, generated from res/down_arrow.png, 19 bytes
+# 2-bit RLE, generated from wasp/resources/down_arrow.png, 19 bytes
 down_arrow = (
     b'\x02'
     b'\x10\t'
     b'\xe0\x01\xce\x03\xcc\x05\xca\x07\xc8\t\xc6\x0b\xc4\r\xc2\x07'
 )
 
-# 2-bit RLE, generated from res/knob.png, 72 bytes
+# 2-bit RLE, generated from wasp/resources/knob.png, 72 bytes
 knob = (
     b'\x02'
     b'(('
@@ -197,7 +197,7 @@ knob = (
     b'\x16\xd0\x1c\xc8\x10'
 )
 
-# 2-bit RLE, generated from res/notification.png, 104 bytes
+# 2-bit RLE, generated from wasp/resources/notification.png, 104 bytes
 notification = (
     b'\x02'
     b'\x1e '
@@ -210,7 +210,7 @@ notification = (
     b'\x0e\xc4\x1b\xc2\x0e'
 )
 
-# 2-bit RLE, generated from res/blestatus.png, 104 bytes
+# 2-bit RLE, generated from wasp/resources/blestatus.png, 104 bytes
 blestatus = (
     b'\x02'
     b'\x16 '
@@ -223,7 +223,7 @@ blestatus = (
     b'\x13\xc2\x14\xc1\x0e'
 )
 
-# 2-bit RLE, generated from res/play.png, 303 bytes
+# 2-bit RLE, generated from wasp/resources/play.png, 303 bytes
 play = (
     b'\x02'
     b'HH'
@@ -248,7 +248,7 @@ play = (
     b'\xe0)\xdd-\xda1\xd47\xce?\xff\x8f'
 )
 
-# 2-bit RLE, generated from res/pause.png, 320 bytes
+# 2-bit RLE, generated from wasp/resources/pause.png, 320 bytes
 pause = (
     b'\x02'
     b'HH'
@@ -274,7 +274,7 @@ pause = (
     b'&\xe0)\xdd-\xda1\xd47\xce?\xff\x8f'
 )
 
-# 2-bit RLE, generated from res/fwd.png, 93 bytes
+# 2-bit RLE, generated from wasp/resources/fwd.png, 93 bytes
 fwd = (
     b'\x02'
     b'0\x18'
@@ -286,7 +286,7 @@ fwd = (
     b'\x0e\xcc\x0f\xc6\x0f\xca\x11\xc4\x11\xc6'
 )
 
-# 2-bit RLE, generated from res/back.png, 93 bytes
+# 2-bit RLE, generated from wasp/resources/back.png, 93 bytes
 back = (
     b'\x02'
     b'0\x18'
@@ -298,7 +298,7 @@ back = (
     b'\x0e\xcd\x0f\xc6\x0f\xcc\x11\xc4\x11\xc4'
 )
 
-# 2-bit RLE, generated from res/checkbox.png, 108 bytes
+# 2-bit RLE, generated from wasp/resources/checkbox.png, 108 bytes
 checkbox = (
     b'\x02'
     b'  '
