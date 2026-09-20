@@ -59,6 +59,10 @@ class TestApp():
         elif self.test == 'Touch':
             draw.string('Button', 0, 108, width=240)
 
+    def crash(self):
+        """Throw an exception, so the crash handler can be tested."""
+        raise RuntimeError('Deliberate crash')
+
     def swipe(self, event):
         tests = self.tests
         i = tests.index(self.test)
