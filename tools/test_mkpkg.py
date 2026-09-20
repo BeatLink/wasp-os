@@ -127,13 +127,20 @@ def test_compiled_module_is_mpy(build, tmp_path):
 
 @needs_mpy_cross
 def test_one_bit_icon_header(build, tmp_path):
-    """The symbolic app icons are 1-bit and 48x48."""
+    """A 1-bit icon carries its depth and the source image's dimensions.
+
+    The sizes come from the image rather than being written down here, so
+    redrawing the icons does not break the test.
+    """
+    from PIL import Image
+
     build('apps/music_player')
     icon = (tmp_path / 'music_player' / 'icon.rle').read_bytes()
+    source = Image.open(os.path.join(ROOT_DIR, 'apps/music_player/icon.png'))
 
+    assert source.mode == '1'
     assert icon[0] == 1
-    assert icon[1] == 48
-    assert icon[2] == 48
+    assert (icon[1], icon[2]) == source.size
     assert len(icon) > 3
 
 

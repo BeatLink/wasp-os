@@ -10,6 +10,19 @@ functionality brought across.
 
 The original wasp-os documentation is in [README.rst](README.rst).
 
+## Building
+
+The toolchain comes from the flake, so nothing has to be installed by hand:
+
+```bash
+nix develop
+make BOARD=pinetime all   # bootloader, reloader and firmware
+make check                # simulator test suite
+pytest tools/             # packaging tool tests
+```
+
+A headless simulator run also needs `SDL_VIDEODRIVER=dummy`.
+
 ## Status
 
 Early work in progress. Nothing here is ready to flash to a watch yet.
