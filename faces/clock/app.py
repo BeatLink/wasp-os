@@ -6,7 +6,7 @@
 
 Shows a time (as HH:MM) together with a battery meter and the date.
 
-.. figure:: res/screenshots/ClockApp.png
+.. figure:: faces/clock/screenshot.png
     :width: 179
 """
 

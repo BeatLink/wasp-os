@@ -6,7 +6,7 @@
 
 A combined stopwatch and step counter.
 
-.. figure:: res/screenshots/SportsApp.png
+.. figure:: apps/sports/screenshot.png
     :width: 179
 """
 import wasp

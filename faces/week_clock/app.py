@@ -6,7 +6,7 @@
 
 Shows a time (as HH:MM) together with a battery meter, the date, and the weekday.
 
-.. figure:: res/screenshots/WeekClockApp.png
+.. figure:: faces/week_clock/screenshot.png
     :width: 179
 """
 

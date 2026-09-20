@@ -11,9 +11,9 @@ def discover_app_constructors():
 
     globs_system = glob.glob('wasp/apps/system/*.py')
     names_system = [ g[5:-3].replace('/', '.') for g in globs_system ]
-    globs_user = glob.glob('apps/*.py')
+    globs_user = glob.glob('apps/*/app.py')
     names_user = [ g[:-3].replace('/', '.') for g in globs_user ]
-    globs_watchface = glob.glob('watch_faces/*.py')
+    globs_watchface = glob.glob('faces/*/app.py')
     names_watchface = [ g[:-3].replace('/', '.') for g in globs_watchface ]
     modules = [ importlib.import_module(n) for n in names_system + names_user + names_watchface ]
 

@@ -7,7 +7,7 @@
 A collection of tests used to develop features or provide useful metrics such
 as performance indicators or memory usage.
 
-.. figure:: res/screenshots/TestApp.png
+.. figure:: apps/test/screenshot.png
     :width: 179
 """
 

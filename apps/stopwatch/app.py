@@ -6,7 +6,7 @@
 
 Simple stop/start watch with support for split times.
 
-.. figure:: res/screenshots/StopwatchApp.png
+.. figure:: apps/stopwatch/screenshot.png
     :width: 179
 """
 import wasp

@@ -5,7 +5,7 @@
 """Weather for GadgetBridge and wasp-os companion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    .. figure:: res/screenshots/WeatherApp.png
+    .. figure:: apps/weather/screenshot.png
         :width: 179
 
         Screenshot of the Weather application

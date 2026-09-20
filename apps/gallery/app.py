@@ -6,7 +6,7 @@
 
 An application that shows images stored in the filesystem.
 
-.. figure:: res/screenshots/GalleryApp.png
+.. figure:: apps/gallery/screenshot.png
     :width: 179
 
 The images have to be uploaded in the "gallery" directory.

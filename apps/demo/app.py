@@ -9,7 +9,7 @@ MicroPython logos. It cycles through a variety of colours
 and swaps between the logos every 5 images (so if you change
 anything make sure len(colors) is not a multiple of 5).
 
-.. figure:: res/screenshots/DemoApp.png
+.. figure:: apps/demo/screenshot.png
     :width: 179
 
 The demo also includes code to keep the devie awake making it

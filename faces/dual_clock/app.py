@@ -6,7 +6,7 @@
 
 Shows a time (as HH and MM vertically) together with a battery meter.
 
-.. figure:: res/screenshots/DualClockApp.png
+.. figure:: faces/dual_clock/screenshot.png
     :width: 179
 """
 

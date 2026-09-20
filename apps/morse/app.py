@@ -13,7 +13,7 @@ lines will be deleted.
 There is a preview of the next letter at the bottom of the screen.
 
 
-.. figure:: res/screenshots/MorseApp.png
+.. figure:: apps/morse/screenshot.png
     :width: 179
 """
 

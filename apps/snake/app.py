@@ -6,7 +6,7 @@
 
 This is a classic arcade game called snake.
 
-.. figure:: res/screenshots/SnakeApp.png
+.. figure:: apps/snake/screenshot.png
     :width: 179
 
     Screenshot of the snake game

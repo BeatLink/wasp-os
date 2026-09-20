@@ -151,31 +151,31 @@ simulator:
 
 Watch faces:
 
-.. image:: res/screenshots/ClockApp.png
+.. image:: faces/clock/screenshot.png
    :alt: Digital clock application running on the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/WeekClockApp.png
+.. image:: faces/week_clock/screenshot.png
    :alt: Digital clock application with week day running on the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/ChronoApp.png
+.. image:: faces/chrono/screenshot.png
    :alt: Analogue clock application running in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/DualClockApp.png
+.. image:: faces/dual_clock/screenshot.png
    :alt: An other clock application running in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/FibonacciClockApp.png
+.. image:: faces/fibonacci_clock/screenshot.png
    :alt: Fibonacci clock application running in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/WordClockApp.png
+.. image:: faces/word_clock/screenshot.png
    :alt: Shows a time as words in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/ResistorClockApp.png
+.. image:: faces/resistor_clock/screenshot.png
    :alt: Resistor colour code clock application running in the wasp-os simulator
    :width: 179
 
@@ -185,39 +185,39 @@ Games:
    :alt: Let's play the 2048 game (in the wasp-os simulator)
    :width: 179
 
-.. image:: res/screenshots/GameOfLifeApp.png
+.. image:: apps/game_of_life/screenshot.png
    :alt: Game of Life running in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/SnakeApp.png
+.. image:: apps/snake/screenshot.png
    :alt: Snake Game running in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/Puzzle15App.png
+.. image:: apps/puzzle15/screenshot.png
    :alt: 15 Puzzle running in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/FourInARowApp.png
+.. image:: apps/four_in_a_row/screenshot.png
    :alt: Four In A Row running in the wasp-os simulator
    :width: 179
 
 Time management apps:
 
-.. image:: res/screenshots/AlarmApp.png
+.. image:: apps/alarm/screenshot.png
    :alt: Alarm clock application running in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/StopwatchApp.png
+.. image:: apps/stopwatch/screenshot.png
    :alt: Stop watch application running on the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/TimerApp.png
+.. image:: apps/timer/screenshot.png
    :alt: Countdown timer application running in the wasp-os simulator
    :width: 179
 
 System apps:
 
-.. image:: res/screenshots/DisaBLEApp.png
+.. image:: apps/disa_b_l_e/screenshot.png
    :alt: Small application for disabling bluetooth to save power and enhance security
    :width: 179
 
@@ -233,58 +233,58 @@ System apps:
    :alt: Software selection app running on the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/FacesApp.png
+.. image:: apps/faces/screenshot.png
    :alt: Switch watch faces
    :width: 179
 
 
 Other apps: (The "blank" white screenshot is a flashlight app)
 
-.. image:: res/screenshots/BeaconApp.png
+.. image:: apps/beacon/screenshot.png
    :alt: Flash the relatively powerful HRS LED repeatedly
    :width: 179
 
-.. image:: res/screenshots/CalculatorApp.png
+.. image:: apps/calculator/screenshot.png
    :alt: Calculator running in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/DemoApp.png
+.. image:: apps/demo/screenshot.png
    :alt: Simple always-on demo for showing off wasp-os at conferences and shows
    :width: 179
 
-.. image:: res/screenshots/FlashlightApp.png
+.. image:: apps/flashlight/screenshot.png
    :alt: Torch application running on the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/GalleryApp.png
+.. image:: apps/gallery/screenshot.png
    :alt: Gallery application running on the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/HeartApp.png
+.. image:: apps/heart/screenshot.png
    :alt: Heart rate application running on the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/HaikuApp.png
+.. image:: apps/haiku/screenshot.png
    :alt: Haiku application running in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/LevelApp.png
+.. image:: apps/level/screenshot.png
    :alt: Shows a time as words in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/MorseApp.png
+.. image:: apps/morse/screenshot.png
    :alt: Morse translator/notepad application running on the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/PomodoroApp.png
+.. image:: apps/pomodoro/screenshot.png
    :alt: Customizable pomodoro app with randomized vibration patterns to make sure you notice
    :width: 179
 
-.. image:: res/screenshots/PhoneFinderApp.png
+.. image:: apps/phone_finder/screenshot.png
    :alt: Find your phone by causing it to ring
    :width: 179
 
-.. image:: res/screenshots/SportsApp.png
+.. image:: apps/sports/screenshot.png
    :alt: Sports applications, a combined stopwatch and step counter
    :width: 179
 
@@ -292,15 +292,15 @@ Other apps: (The "blank" white screenshot is a flashlight app)
    :alt: Step counter application running on the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/TestApp.png
+.. image:: apps/test/screenshot.png
    :alt: Self test application running a rendering benchmark on the simulator
    :width: 179
 
-.. image:: res/screenshots/MusicPlayerApp.png
+.. image:: apps/music_player/screenshot.png
    :alt: Music Player running in the wasp-os simulator
    :width: 179
 
-.. image:: res/screenshots/WeatherApp.png
+.. image:: apps/weather/screenshot.png
    :alt: Weather application running in the wasp-os simulator
    :width: 179
 

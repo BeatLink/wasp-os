@@ -5,7 +5,7 @@
 
 An application to find a phone connected via Gadgetbridge.
 
-    .. figure:: res/screenshots/PhoneFinderApp.png
+    .. figure:: apps/phone_finder/screenshot.png
         :width: 179
 
         Screenshot of the Phone Finder Application

@@ -6,7 +6,7 @@
 
 These three lines poems are fun to write and fit nicely on a tiny screen.
 
-.. figure:: res/screenshots/HaikuApp.png
+.. figure:: apps/haiku/screenshot.png
     :width: 179
 
 If there is a file called haiku.txt in the flash filesystem then this app

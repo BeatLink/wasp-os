@@ -10,7 +10,7 @@ This app shows the bluetooth status and provides a button to disable/enable it.
 Unfortunately, re-enabling bluetooth normally has some issues, so as a
 workaround the "enable" button restarts the watch.
 
-.. figure:: res/screenshots/DisaBLEApp.png
+.. figure:: apps/disa_b_l_e/screenshot.png
     :width: 179
 """
 

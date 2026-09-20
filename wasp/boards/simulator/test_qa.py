@@ -6,11 +6,21 @@ from PIL import Image
 
 EXCLUDE = ('NotificationApp', 'PagerApp', 'TemplateApp', 'FacesApp', 'ReadMeApp')
 
+def _screenshot(constructor):
+    # System apps keep their screenshots in res/screenshots, packaged apps and faces carry their own.
+    if constructor.__module__.startswith('apps.system.'):
+        return f'res/screenshots/{constructor.__name__}.png'
+    return constructor.__module__.rsplit('.', 1)[0].replace('.', '/') + '/screenshot.png'
+
+def _package_name(module):
+    # apps.music_player.app -> music_player
+    return module.split('.')[-2]
+
 def test_screenshot(constructor):
     if f'{constructor.__name__}' in EXCLUDE or f'{constructor.__module__}'.startswith('apps.user.'):
         return
 
-    fname = f'res/screenshots/{constructor.__name__}.png'.replace(' ', '')
+    fname = _screenshot(constructor)
 
     # Every application requires a screenshot be captured for use in the
     # documentation. The screenshots must conform to standard dimensions
@@ -29,7 +39,7 @@ def test_README(constructor):
     if f'{constructor.__name__}' in EXCLUDE or f'{constructor.__module__}'.startswith('apps.user.'):
         return
 
-    fname = f'res/screenshots/{constructor.__name__}.png'.replace(' ', '')
+    fname = _screenshot(constructor)
 
     with open('README.rst') as f:
         readme = f.readlines()
@@ -67,10 +77,8 @@ def test_app_library(constructor):
         waspdoc = f.read()
 
     # Every application must be listed in the Application Library
-    needle_system = f'.. automodule:: {constructor.__module__}'.replace('apps.system.', '')
-    needle_user_defined = f'.. automodule:: {constructor.__module__}'.replace('apps.', '')
-    needle_watch_faces = f'.. automodule:: {constructor.__module__}'.replace('watch_faces.', '')
-    assert needle_system in appdoc or needle_user_defined in appdoc or needle_watch_faces in appdoc
+    needle = f'.. automodule:: {constructor.__module__}'
+    assert needle in appdoc
 
 def test_app_naming(constructor):
     # The class name of every app must be the PascalCase version of its file name in snake_case appended with "App"
@@ -80,17 +88,15 @@ def test_app_naming(constructor):
     module = f'{constructor.__module__}'
     if module.startswith('apps.system.'):
         assert _snake_case_to_pascal_case(module.replace('apps.system.', '')) + 'App' == f'{constructor.__name__}'
-    elif module.startswith('apps.'):
-        assert _snake_case_to_pascal_case(module.replace('apps.', '')) + 'App' == f'{constructor.__name__}'
-    elif module.startswith('watch_faces.'):
-        assert _snake_case_to_pascal_case(module.replace('watch_faces.', '')) + 'App' == f'{constructor.__name__}'
+    else:
+        assert _snake_case_to_pascal_case(_package_name(module)) + 'App' == f'{constructor.__name__}'
 
 
 def test_docstrings(constructor):
     if f'{constructor.__name__}' in EXCLUDE or f'{constructor.__module__}'.startswith('apps.user.'):
         return
 
-    fname = f'res/screenshots/{constructor.__name__}.png'.replace(' ', '')
+    fname = _screenshot(constructor)
 
     class_doc = constructor.__doc__
     module_doc = importlib.import_module(constructor.__module__).__doc__

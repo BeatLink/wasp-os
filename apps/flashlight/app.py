@@ -6,7 +6,7 @@
 
 Shows a bright screen that you can tap to change brightness or switch to redlight.
 
-.. figure:: res/screenshots/FlashlightApp.png
+.. figure:: apps/flashlight/screenshot.png
     :width: 179
 """
 

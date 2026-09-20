@@ -1,7 +1,7 @@
 import pytest
 import time
 import wasp
-import apps.test
+import apps.test.app
 import settings
 
 def step():
@@ -103,7 +103,7 @@ def test_selftests(system):
     will do something useful! For example it will run the benchmark for every
     one of the benchmark tests.
     """
-    system.switch(apps.test.TestApp())
+    system.switch(apps.test.app.TestApp())
     system.step()
 
     start_point = system.app.test
@@ -117,7 +117,7 @@ def test_selftests(system):
     assert(start_point == system.app.test)
 
 def test_selftest_crash(system):
-    system.switch(apps.test.TestApp())
+    system.switch(apps.test.app.TestApp())
     system.step()
 
     def select(name):

@@ -6,7 +6,7 @@
 This is a simple calculator app that uses the build-in eval() function to
 compute the solution.
 
-.. figure:: res/screenshots/CalculatorApp.png
+.. figure:: apps/calculator/screenshot.png
     :width: 179
 """
 

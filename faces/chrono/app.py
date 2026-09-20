@@ -6,7 +6,7 @@
 
 Shows the time as a traditional watch face together with a battery meter.
 
-.. figure:: res/screenshots/ChronoApp.png
+.. figure:: faces/chrono/screenshot.png
     :width: 179
 
     Screenshot of the analogue clock application

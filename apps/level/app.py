@@ -8,7 +8,7 @@ A tap opens a menu with the option to calibrate or reset the level.
 To calibrate, place the watch on a flat surface, then tap the "Calibrate"
 button while ensuring the watch is stationary.
 
-.. figure:: res/screenshots/LevelApp.png
+.. figure:: apps/level/screenshot.png
     :width: 179
 """
 

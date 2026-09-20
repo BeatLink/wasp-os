@@ -5,7 +5,7 @@
 
 An application to set a vibration in a specified amount of time. Like a kitchen timer.
 
-    .. figure:: res/screenshots/TimerApp.png
+    .. figure:: apps/timer/screenshot.png
         :width: 179
 
         Screenshot of the Timer Application

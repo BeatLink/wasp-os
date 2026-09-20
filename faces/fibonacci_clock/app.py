@@ -9,7 +9,7 @@ mathematician Fibonacci in the 13th century. This is a sequence starting with
 1 and 1, where each subsequent number is the sum of the previous two. For the
 clock I used the first 5 terms: 1, 1, 2, 3 and 5.
 
-    .. figure:: res/screenshots/FibonacciClockApp.png
+    .. figure:: faces/fibonacci_clock/screenshot.png
         :width: 179
 
         Screenshot of the fibonacci clock application

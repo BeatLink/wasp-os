@@ -5,7 +5,7 @@
 """Music Player for GadgetBridge
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    .. figure:: res/screenshots/MusicPlayerApp.png
+    .. figure:: apps/music_player/screenshot.png
         :width: 179
 
         Screenshot of the Music Player application

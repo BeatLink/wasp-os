@@ -8,7 +8,7 @@
 
 Shows a time as words together with a battery meter and the date.
 
-.. figure:: res/screenshots/WordClockApp.png
+.. figure:: faces/word_clock/screenshot.png
     :width: 179
 """
 

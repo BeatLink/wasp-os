@@ -6,7 +6,7 @@
  
 This is the classic two player board game called Four In A Row or Connect4.  You play against the computer.
 
-.. figure:: res/screenshots/FourInARowApp.png
+.. figure:: apps/four_in_a_row/screenshot.png
     :width: 179
 
     Screenshot of Four In A Row

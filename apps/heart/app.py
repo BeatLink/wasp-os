@@ -6,7 +6,7 @@
 
 A graphing heart rate monitor using a PPG sensor.
 
-.. figure:: res/screenshots/HeartApp.png
+.. figure:: apps/heart/screenshot.png
     :width: 179
 
 This program also implements some (entirely optional) debug features to

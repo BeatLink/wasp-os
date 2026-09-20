@@ -11,7 +11,7 @@ The blinking is handled by the HRS, so this app consumes very little power.
 With BLE and/or step counter disabled and blinking frequency set to the minimum,
 the watch's battery will last for many days.
 
-.. figure:: res/screenshots/BeaconApp.png
+.. figure:: apps/beacon/screenshot.png
     :width: 179
 """
 

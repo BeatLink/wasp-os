@@ -5,7 +5,7 @@
 
 A popular sliding block puzzle game.
 
-    .. figure:: res/screenshots/Puzzle15App.png
+    .. figure:: apps/puzzle15/screenshot.png
         :width: 179
 
         Screenshot of the 15 puzzle application

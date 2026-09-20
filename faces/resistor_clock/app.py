@@ -13,7 +13,7 @@ Colours taken from https://people.duke.edu/~ng46/topics/color-code.htm (grey mov
 Code adapted from fibonacci_clock.py by Johannes Wache
 Display the time in using the resistor colour codes
 
-.. figure:: res/screenshots/ResistorClockApp.png
+.. figure:: faces/resistor_clock/screenshot.png
     :width: 179
 """
 

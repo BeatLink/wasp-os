@@ -2,38 +2,38 @@
 # At least one watch face must be specified. Quick ring apps will be added in order.
 
 [[app]]
-file = 'apps/stopwatch.py'
+file = 'apps/stopwatch/app.py'
 quick_ring = true
 
 [[app]]
-file = 'apps/heart.py'
+file = 'apps/heart/app.py'
 quick_ring = true
 
 [[app]]
-file = 'apps/alarm.py'
+file = 'apps/alarm/app.py'
 auto_load = true
 
 [[app]]
-file = 'apps/timer.py'
+file = 'apps/timer/app.py'
 auto_load = true
 
 [[app]]
-file = 'apps/calculator.py'
+file = 'apps/calculator/app.py'
 
 [[app]]
-file = 'apps/disa_b_l_e.py'
+file = 'apps/disa_b_l_e/app.py'
 
 [[app]] # If only one watch face is included this app can be removed
-file = 'apps/faces.py'
+file = 'apps/faces/app.py'
 auto_load = true
 no_except = true
 
 [[watchface]]
-file = 'watch_faces/clock.py'
+file = 'faces/clock/app.py'
 
 [[watchface]] # Requires ClockApp to also be installed
-file = 'watch_faces/week_clock.py'
+file = 'faces/week_clock/app.py'
 default = true
 
 [[watchface]]
-file = 'watch_faces/chrono.py'
+file = 'faces/chrono/app.py'

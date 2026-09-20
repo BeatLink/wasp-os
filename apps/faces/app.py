@@ -5,7 +5,7 @@
 
 A tool to select a suitable watch face.
 
-.. figure:: res/screenshots/FacesApp.png
+.. figure:: apps/faces/screenshot.png
     :width: 179
 
 The app is intended to be enabled by default and has, therefore, been carefully
