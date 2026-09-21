@@ -31,12 +31,15 @@ GLYPHMAP = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 # Size of the square the glyph is fitted into.
 SIZE = 32
 
-# The launcher tiles, drawn behind the icons.
-BACKGROUNDS = (
-    ('wasp/apps/system/grid_launcher.py', 'background',
-     'res/ui/backgrounds/3x3.png', 'res/ui/backgrounds/3x3.svg'),
-    ('wasp/apps/system/list_launcher.py', 'background',
-     'res/ui/backgrounds/4x1.png', 'res/ui/backgrounds/4x1.svg'),
+# The rounded corner every card is drawn with, in its four orientations.
+CORNER_SVG = 'res/ui/corner.svg'
+CORNER_PNG = 'res/ui/corner.png'
+CORNER_SIZE = 12
+CORNERS = (
+    ('wasp/draw565.py', '_corner_tl', None),
+    ('wasp/draw565.py', '_corner_tr', Image.FLIP_LEFT_RIGHT),
+    ('wasp/draw565.py', '_corner_bl', Image.FLIP_TOP_BOTTOM),
+    ('wasp/draw565.py', '_corner_br', 'both'),
 )
 
 # Glyph for each app, as (source file, variable, PNG, glyph name).
@@ -128,10 +131,11 @@ def replace(source, name, image, png):
         f.writelines(lines[:start] + body + lines[end:])
 
 
-def bake(svg, png):
-    """Render an SVG to a monochrome PNG the size of the screen."""
-    subprocess.run(('inkscape', '--export-type=png', '--export-width=240',
-                    '--export-height=240', '--export-background=black',
+def bake(svg, png, size=240):
+    """Render an SVG to a square monochrome PNG."""
+    subprocess.run(('inkscape', '--export-type=png',
+                    '--export-width=%d' % size, '--export-height=%d' % size,
+                    '--export-background=black',
                     '--export-filename=' + png, svg), check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     im = Image.open(png).convert('L')
@@ -143,9 +147,15 @@ def bake(svg, png):
 def main():
     glyphs = json.load(open(GLYPHMAP))
 
-    for (source, name, png, svg) in BACKGROUNDS:
-        replace(source, name, rle_encode.encode(bake(svg, png)), svg)
-        print('{:<40} {:<24} {}'.format(source, name, svg))
+    corner = bake(CORNER_SVG, CORNER_PNG, CORNER_SIZE)
+    for (source, name, flip) in CORNERS:
+        im = corner
+        if flip == 'both':
+            im = im.transpose(Image.FLIP_LEFT_RIGHT).transpose(Image.FLIP_TOP_BOTTOM)
+        elif flip is not None:
+            im = im.transpose(flip)
+        replace(source, name, rle_encode.encode(im), CORNER_SVG)
+        print('{:<40} {:<24} {}'.format(source, name, CORNER_SVG))
 
     for (source, name, png, glyph) in ICONS:
         if glyph not in glyphs:

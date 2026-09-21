@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- One rounded corner, baked to a bitmap by tools/gen_app_icons.py.
+     White is the card, black is whatever the card sits on. The other three
+     corners are mirrored from this one at build time. -->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="12" height="12" viewBox="0 0 12 12" version="1.1">
+  <rect width="12" height="12" fill="#000000"/>
+  <path d="M 12,0 A 12,12 0 0 0 0,12 L 12,12 Z" fill="#ffffff"/>
+</svg>

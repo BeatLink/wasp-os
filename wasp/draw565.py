@@ -70,6 +70,38 @@ def _fill(mv, color: int, count: int, offset: int):
     for x in range(offset, offset+count):
         p[x] = color
 
+# The four rounded corners every card is drawn with, generated from
+# res/ui/corner.svg by tools/gen_app_icons.py.
+
+# 1-bit RLE, 12x12, generated from res/ui/corner.svg, 18 bytes
+_corner_tl = (
+    12, 12,
+    b'\t\x03\x06\x06\x05\x07\x04\x08\x03\t\x02\n\x01\x0b\x01\x0b'
+    b'\x01/'
+)
+
+# 1-bit RLE, 12x12, generated from res/ui/corner.svg, 20 bytes
+_corner_tr = (
+    12, 12,
+    b'\x00\x03\t\x06\x06\x07\x05\x08\x04\t\x03\n\x02\x0b\x01\x0b'
+    b'\x01\x0b\x01$'
+)
+
+# 1-bit RLE, 12x12, generated from res/ui/corner.svg, 20 bytes
+_corner_bl = (
+    12, 12,
+    b'\x00$\x01\x0b\x01\x0b\x01\x0b\x02\n\x03\t\x04\x08\x05\x07'
+    b'\x06\x06\t\x03'
+)
+
+# 1-bit RLE, 12x12, generated from res/ui/corner.svg, 19 bytes
+_corner_br = (
+    12, 12,
+    b'\x00/\x01\x0b\x01\x0b\x01\n\x02\t\x03\x08\x04\x07\x05\x06'
+    b'\x06\x03\t'
+)
+
+
 def _bounding_box(s, font):
     if not s:
         return (0, font.height())
@@ -168,6 +200,41 @@ class Draw565(object):
         if remaining:
             quick_write(buf[0:2*remaining])
         display.quick_end()
+
+    def rounded_rect(self, x, y, w, h, color=None, bg=0):
+        """Draw a solid colour rectangle with rounded corners.
+
+        The body is filled in one pass and the four corners are then drawn
+        over it, so the corner radius is whatever res/ui/corner.svg is.
+
+        Example:
+
+        .. code-block:: python
+
+            draw = wasp.watch.drawable
+            draw.rounded_rect(4, 4, 75, 75, 0x3186)
+
+        :param x:     X coordinate of the left-most pixels of the rectangle
+        :param y:     Y coordinate of the top-most pixels of the rectangle
+        :param w:     Width of the rectangle
+        :param h:     Height of the rectangle
+        :param color: Colour to draw with, defaults to the foreground colour
+        :param bg:    Colour showing through outside the corners
+        """
+        if color is None:
+            color = self._bgfg & 0xffff
+
+        self.fill(color, x, y, w, h)
+
+        r = _corner_tl[0]
+        if w < 2 * r or h < 2 * r:
+            return
+
+        rleblit = self.rleblit
+        rleblit(_corner_tl, (x, y), color, bg)
+        rleblit(_corner_tr, (x + w - r, y), color, bg)
+        rleblit(_corner_bl, (x, y + h - r), color, bg)
+        rleblit(_corner_br, (x + w - r, y + h - r), color, bg)
 
     @micropython.native
     def blit(self, image, x, y, fg=0xffff, c1=0x4a69, c2=0x7bef):
