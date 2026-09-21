@@ -30,7 +30,9 @@ Built-in
 
 .. automodule:: apps.system.step_counter
 
-.. automodule:: apps.system.launcher
+.. automodule:: apps.system.grid_launcher
+
+.. automodule:: apps.system.list_launcher
 
 .. automodule:: apps.system.settings
 
