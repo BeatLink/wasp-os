@@ -65,6 +65,11 @@ class FacesApp():
         """Draw the display from scratch."""
         wasp.watch.drawable.fill()
         (module, label) = self.choices[self.choice]
-        wasp.system.register('{}.{}App'.format(module, label), watch_face=True)
-        wasp.system.quick_ring[0].preview()
+        wasp.system.register('{}.{}App'.format(module, label), watch_face=True,
+                             name=label)
+        # Previewing means building the face, which a registered entry is not.
+        face = wasp.system.quick_ring[0]
+        if isinstance(face, wasp.AppEntry):
+            face = face.load()
+        face.preview()
         self.si.draw()

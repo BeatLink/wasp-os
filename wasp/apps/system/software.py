@@ -68,7 +68,7 @@ class SoftwareApp():
         for _, checkbox in db:
             label = checkbox.label.replace(' ', '')
             for app in wasp.system.launcher_ring:
-                if type(app).__name__.startswith(label):
+                if app.NAME.replace(' ', '').startswith(label):
                     checkbox.state = True
                     break
 
@@ -114,10 +114,11 @@ class SoftwareApp():
                 label = checkbox.label.replace(' ', '')
                 if checkbox.state:
                     gc.collect()
-                    wasp.system.register('{}.{}App'.format(module, label))
+                    wasp.system.register('{}.{}App'.format(module, label),
+                                         name=checkbox.label)
                 else:
                     for app in wasp.system.launcher_ring:
-                        if type(app).__name__.startswith(label):
+                        if app.NAME.replace(' ', '').startswith(label):
                             wasp.system.launcher_ring.remove(app)
                             break
                 break

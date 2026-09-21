@@ -46,7 +46,9 @@ class StepCounterApp():
     ICON = icons.steps
 
     def __init__(self):
-        watch.accel.reset()
+        # The sensor is started when the app is registered, not here: a
+        # reset zeroes the step count, and this runs every time the app is
+        # opened.
         self._scroll = wasp.widgets.ScrollIndicator()
         self._wake = 0
 
@@ -146,8 +148,10 @@ class StepCounterApp():
         walltime = time.localtime(then)
         draw.string('{:02d}-{:02d}'.format(walltime[2], walltime[1]), 0, 0)
 
-        # Get the iterable step date for the currently selected date
-        data = wasp.system.steps.data(then)
+        # Get the iterable step data for the currently selected date. A
+        # watch whose step counter did not start has no logger at all.
+        logger = getattr(wasp.system, 'steps', None)
+        data = logger.data(then) if logger else None
 
         # Bail if there is no data
         if not data:

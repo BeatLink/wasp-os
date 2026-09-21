@@ -11,6 +11,7 @@
     firmware sees them as the flat modules apps.user.NAME.
 """
 
+import re
 import shutil
 import sys
 try:
@@ -39,6 +40,15 @@ def _class_name(path):
 
 
 def _display_name(path):
+    """The name an app calls itself, which the launcher lists it under.
+
+    Read it from the source rather than guessing from the file name: the
+    stopwatch lives in stopwatch/app.py but calls itself Stopclock.
+    """
+    with open(path) as f:
+        match = re.search(r'''^\s*NAME\s*=\s*['"](.+?)['"]''', f.read(), re.M)
+    if match:
+        return match.group(1)
     return _snake_case_to_pascal_case(_module_name(path))
 
 
@@ -90,7 +100,8 @@ with open(sys.argv[1:][0], 'rb') as config_file:
         elif not default_watchface:
             default_watchface = watchface
     watchface_path = 'apps.user.' + _module_name(default_watchface.get('file')) + '.' + _class_name(default_watchface.get('file'))
-    reg_file.write('    (\'' + watchface_path + '\', True, False, True),\n')
+    watchface_name = _display_name(default_watchface.get('file'))
+    reg_file.write('    (\'' + watchface_path + '\', True, False, True, \'' + watchface_name + '\'),\n')
 
     # The next apps should be the quick ring and any auto_load apps (in order specified in the config)
     for app in config.get('app'):
@@ -98,5 +109,6 @@ with open(sys.argv[1:][0], 'rb') as config_file:
             app_path = 'apps.user.' + _module_name(app.get('file')) + '.' + _class_name(app.get('file'))
             app_quick_ring = str(not (app.get('quick_ring') is None))
             app_no_except = str(not (app.get('no_except') is None))
-            reg_file.write('    (\'' + app_path + '\', ' + app_quick_ring + ', False, ' + app_no_except + '),\n')
+            app_display_name = _display_name(app.get('file'))
+            reg_file.write('    (\'' + app_path + '\', ' + app_quick_ring + ', False, ' + app_no_except + ', \'' + app_display_name + '\'),\n')
     reg_file.write(')\n\n')
