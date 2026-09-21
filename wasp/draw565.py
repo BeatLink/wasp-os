@@ -70,6 +70,44 @@ def _fill(mv, color: int, count: int, offset: int):
     for x in range(offset, offset+count):
         p[x] = color
 
+@micropython.viper
+def _card_rows(buf, w: int, r: int, h: int, start: int, end: int, bgfg: int):
+    """Write rows start to end of a rounded rectangle into buf, w pixels a row.
+
+    A pixel is bare when its centre falls outside the corner's circle,
+    tested in doubled coordinates so the half-pixel centres stay integers.
+    """
+    p = ptr16(buf)
+    bg = ((bgfg >> 24) & 0xff) + ((bgfg >> 8) & 0xff00)
+    fg = ((bgfg >> 8) & 0xff) + ((bgfg & 0xff) << 8)
+    i = 0
+    for row in range(start, end):
+        e = row
+        if h - 1 - row < e:
+            e = h - 1 - row
+        k = 0
+        if e < r:
+            d = 2 * (r - e) - 1
+            room = 4 * r * r - d * d
+            d = 2 * r - 1
+            while d * d > room:
+                k += 1
+                d -= 2
+        x = 0
+        while x < k:
+            p[i] = bg
+            i += 1
+            x += 1
+        while x < w - k:
+            p[i] = fg
+            i += 1
+            x += 1
+        while x < w:
+            p[i] = bg
+            i += 1
+            x += 1
+
+
 def _bounding_box(s, font):
     if not s:
         return (0, font.height())
@@ -150,9 +188,10 @@ class Draw565(object):
         if h is None:
             h = display.height - y
 
+        # A string wider than its box asks for negative padding.
+        if w <= 0 or h <= 0:
+            return
         remaining = w * h
-        if remaining == 0:
-          return
 
         display.set_window(x, y, w, h)
 
@@ -167,6 +206,53 @@ class Draw565(object):
             remaining -= sz
         if remaining:
             quick_write(buf[0:2*remaining])
+        display.quick_end()
+
+    def rounded_rect(self, x, y, w, h, color=None, bg=0, radius=12):
+        """Draw a solid colour rectangle with rounded corners.
+
+        The corners are quarter circles worked out as each row is drawn, so
+        any radius can be drawn without a bitmap for it.
+
+        Example:
+
+        .. code-block:: python
+
+            draw = wasp.watch.drawable
+            draw.rounded_rect(4, 4, 75, 75, 0x3186)
+
+        :param x:      X coordinate of the left-most pixels of the rectangle
+        :param y:      Y coordinate of the top-most pixels of the rectangle
+        :param w:      Width of the rectangle
+        :param h:      Height of the rectangle
+        :param color:  Colour to draw with, defaults to the foreground colour
+        :param bg:     Colour showing through outside the corners
+        :param radius: Corner radius, shrunk to fit a rectangle too small
+                       for it
+        """
+        if color is None:
+            color = self._bgfg & 0xffff
+
+        r = min(radius, w // 2, h // 2)
+        bgfg = (bg << 16) | color
+        display = self._display
+        quick_write = display.quick_write
+        buf = display.linebuffer
+
+        # Opening a window costs more than several rows of pixels, so the
+        # whole rectangle goes through one, as many rows to a write as fit.
+        step = len(buf) // (2 * w)
+        px = buf[0:2*w*step]
+        display.set_window(x, y, w, h)
+        display.quick_start()
+        row = 0
+        while row < h:
+            rows = min(step, h - row)
+            if rows < step:
+                px = buf[0:2*w*rows]
+            _card_rows(buf, w, r, h, row, row + rows, bgfg)
+            quick_write(px)
+            row += rows
         display.quick_end()
 
     @micropython.native
