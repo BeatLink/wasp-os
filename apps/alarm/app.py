@@ -27,6 +27,8 @@ import widgets
 import array
 from micropython import const
 
+from widgets.page import bounds, scroll_in, draw_indicator, clear_around
+
 # 1-bit RLE, 32x32, generated from apps/alarm/icon.png, 61 bytes
 icon = (
     32, 32,
@@ -113,6 +115,8 @@ _ROW_W = cards.SPAN
 _ROW_H = cards.size(_ROWS)
 _ROW_TOPS = cards.edges((_ROW_H,) * _ROWS)
 _ROW_PITCH = _ROW_TOPS[1] - _ROW_TOPS[0]
+# Where a sliding page may be cut into bands.
+_BANDS = bounds(_ROW_TOPS, _ROW_H)
 
 # The time page: two columns of four. The day page: four columns of two,
 # each tile as tall as two of the time page's rows.
@@ -222,12 +226,7 @@ class AlarmApp:
         if self.page == _RINGING_PAGE:
             self._snooze()
         elif self.page > _HOME_PAGE:
-            # The editor moves on the vertical axis only. Left and right are
-            # swallowed so an edit in progress cannot be swiped away.
-            if event[0] == wasp.EventType.UP:
-                self._step(1)
-            elif event[0] == wasp.EventType.DOWN:
-                self._step(-1)
+            self._step(event[0])
         elif event[0] == wasp.EventType.UP:
             self._scroll_list(1)
         elif event[0] == wasp.EventType.DOWN:
@@ -258,27 +257,22 @@ class AlarmApp:
             wasp.watch.vibrator.pulse()
             return
         self.scroll = page
-        self._draw()
+        scroll_in(self.draw_band, _BANDS, up=direction > 0)
 
     def _step(self, direction):
-        """Walk the editor one page on, or one page back.
-
-        Swiping up moves on, matching the way the list scrolls, and swiping
-        down past the first page leaves the editor.
-
-        :param direction: 1 to move on, -1 to go back
-        """
-        if direction > 0:
+        """Walk the editor forwards or backwards one page."""
+        if direction == wasp.EventType.LEFT:
             if self.step < _SAVE_STEP:
                 self.step += 1
                 self._draw()
             else:
                 wasp.watch.vibrator.pulse()
-        elif self.step > _TIME_STEP:
-            self.step -= 1
-            self._draw()
-        else:
-            self._close_editor()
+        elif direction == wasp.EventType.RIGHT:
+            if self.step > _TIME_STEP:
+                self.step -= 1
+                self._draw()
+            else:
+                self._close_editor()
 
     def _open_editor(self, index, draft=False):
         self.page = index
@@ -393,6 +387,18 @@ class AlarmApp:
     # Drawing
 
     def _draw(self, update_alarm_row=-1):
+        display = wasp.watch.display
+        if update_alarm_row < 0 and display.scroll_offset:
+            # A page that slid in left the display scrolled, so put it back
+            # before redrawing at ordinary screen coordinates.
+            display.mute(True)
+            display.scroll(0)
+            self._draw_page(update_alarm_row)
+            display.mute(False)
+            return
+        self._draw_page(update_alarm_row)
+
+    def _draw_page(self, update_alarm_row=-1):
         if self.page == _RINGING_PAGE:
             self._draw_ringing_page()
         elif self.page > _HOME_PAGE:
@@ -421,47 +427,47 @@ class AlarmApp:
         draw.string('p', 10, 155)
 
     def _draw_home_page(self, update_alarm_row=-1):
-        draw = wasp.watch.drawable
-
         if update_alarm_row >= 0:
             self._draw_alarm_row(update_alarm_row)
             return
 
-        # Clear to black explicitly: fill() would otherwise reuse whatever
-        # background colour the last set_color left behind.
-        draw.fill(0)
+        self.draw_band(0, 0, 240)
+
+    def draw_band(self, top, y, height):
+        """Draw the list rows from top to top+height at screen row y."""
+        draw = wasp.watch.drawable
+        clear_around(y, height, top, _ROW_TOPS, _ROW_H, (_MARGIN,), _ROW_W)
+
         for row in range(_ROWS):
-            index = self.scroll * _ROWS + row
-            if index > self.num_alarms or index >= _MAX_ALARMS:
-                # A slot past the add row gets no tile at all.
+            tile = _MARGIN + row * _ROW_PITCH
+            if not top <= tile < top + height:
                 continue
-            draw.rounded_rect(_MARGIN, _MARGIN + row * _ROW_PITCH,
-                              _ROW_W, _ROW_H, _TILE_COLOR)
+            index = self.scroll * _ROWS + row
+            ry = y + tile - top
+            if index > self.num_alarms or index >= _MAX_ALARMS:
+                # A slot past the add row gets no tile, but it still has to
+                # be cleared: only the gaps around the tiles are blanked
+                # before this runs.
+                draw.fill(0, _MARGIN, ry, _ROW_W, _ROW_H)
+                continue
+            draw.rounded_rect(_MARGIN, ry, _ROW_W, _ROW_H, _TILE_COLOR)
             if index < self.num_alarms:
-                self._draw_alarm_row(row)
+                self._draw_alarm_row(row, ry)
             else:
-                self._draw_add_row(row)
-        self._draw_indicator()
+                self._draw_add_row(row, ry)
 
-    def _draw_indicator(self):
-        """Draw the list's page indicator down the right hand edge."""
-        cards.scrollbar(wasp.watch.drawable, self.scroll, self._num_pages,
-                        wasp.system.theme('scroll-indicator'))
+        draw_indicator(self.scroll, self._num_pages, top, y, height)
 
-    def _draw_step_indicator(self):
-        """Show which of the editor's three pages is on screen."""
-        cards.scrollbar(wasp.watch.drawable, self.step, _SAVE_STEP + 1,
-                        wasp.system.theme('scroll-indicator'))
-
-    def _draw_alarm_row(self, row):
+    def _draw_alarm_row(self, row, y=None):
         draw = wasp.watch.drawable
         index = self.scroll * _ROWS + row
         alarm = self.alarms[index]
-        y = _MARGIN + row * _ROW_PITCH
+        if y is None:
+            y = _MARGIN + row * _ROW_PITCH
 
         checkbox = self.alarm_checks[row]
         checkbox.state = alarm[_ENABLED_IDX] & _IS_ACTIVE
-        checkbox.draw()
+        checkbox.draw(y + 11)
 
         if checkbox.state:
             fg = wasp.system.theme('bright')
@@ -477,18 +483,17 @@ class AlarmApp:
         draw.string(self._get_repeat_code(alarm[_ENABLED_IDX]),
                     126, y + 19, width=66)
 
-    def _draw_add_row(self, row):
+    def _draw_add_row(self, row, y=None):
         draw = wasp.watch.drawable
-        y = _MARGIN + row * _ROW_PITCH
+        if y is None:
+            y = _MARGIN + row * _ROW_PITCH
         draw.rleblit(plus_icon, (104, y + 11),
                      wasp.system.theme('bright'), _TILE_COLOR)
 
     def _draw_time_page(self):
         draw = wasp.watch.drawable
 
-        # Clear to black explicitly: fill() would otherwise reuse whatever
-        # background colour the last set_color left behind.
-        draw.fill(0)
+        draw.fill()
         for row in range(4):
             for col in range(2):
                 draw.rounded_rect(_MARGIN + col * _CELL_PITCH,
@@ -507,7 +512,6 @@ class AlarmApp:
             draw.string('-', x, _MARGIN + 3 * _ROW_PITCH + 13, width=_CELL_W)
 
         self._draw_time_values()
-        self._draw_step_indicator()
 
     def _draw_time_values(self):
         draw = wasp.watch.drawable
@@ -523,16 +527,13 @@ class AlarmApp:
     def _draw_days_page(self):
         draw = wasp.watch.drawable
 
-        # Clear to black explicitly: fill() would otherwise reuse whatever
-        # background colour the last set_color left behind.
-        draw.fill(0)
+        draw.fill()
         for i in range(len(_DAY_LABELS)):
             draw.rounded_rect(_MARGIN + (i % 4) * _DAY_PITCH,
                               _MARGIN + (i // 4) * _CELL_PITCH,
                               _DAY_W, _DAY_H, _TILE_COLOR)
         for i in range(len(_DAY_LABELS)):
             self._draw_day(i)
-        self._draw_step_indicator()
 
     def _draw_day(self, i):
         """Draw one day tile, underlined when the alarm repeats on that day."""
@@ -555,10 +556,8 @@ class AlarmApp:
         draw = wasp.watch.drawable
         alarm = self.alarms[self.page]
 
-        # Clear to black explicitly: fill() would otherwise reuse whatever
-        # background colour the last set_color left behind.
-        draw.fill(0)
-        draw.rounded_rect(_MARGIN, _SUMMARY_Y, _ROW_W, _SUMMARY_H, _TILE_COLOR)
+        draw.fill()
+        draw.rounded_rect(_MARGIN, _MARGIN, _ROW_W, _SUMMARY_H, _TILE_COLOR)
         for col in range(2):
             draw.rounded_rect(_MARGIN + col * _CELL_PITCH, _ACTION_Y,
                               _CELL_W, _ACTION_H, _TILE_COLOR)
@@ -574,7 +573,6 @@ class AlarmApp:
         bright = wasp.system.theme('bright')
         draw.rleblit(trash_icon, (45, _ACTION_Y + 21), bright, _TILE_COLOR)
         draw.rleblit(save_icon, (163, _ACTION_Y + 21), bright, _TILE_COLOR)
-        self._draw_step_indicator()
 
     # Alarm scheduling
 

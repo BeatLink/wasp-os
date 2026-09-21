@@ -15,12 +15,16 @@ import wasp
 import cards
 import icons
 
+from widgets.page import bounds, scroll_in, draw_indicator, clear_around
+
 # Width, height and position of each of the nine tiles.
 _TILE = cards.size(3)
 _EDGES = cards.edges((_TILE,) * 3)
 # Offset from the tile to the 32x32 icon centred on it.
 _INSET = (_TILE - 32) // 2
 _TILE_COLOR = cards.COLOR
+# Where a sliding page may be cut into bands.
+_BANDS = bounds(_EDGES, _TILE)
 
 
 class GridLauncherApp():
@@ -32,6 +36,15 @@ class GridLauncherApp():
         """Activate the application."""
         self._page = 0
         self._draw()
+        self._subscribe()
+
+    def sliding(self):
+        """Activate the application as it slides up into view."""
+        self._page = 0
+        scroll_in(self.draw_band, _BANDS)
+        self._subscribe()
+
+    def _subscribe(self):
         wasp.system.request_event(wasp.EventMask.TOUCH |
                                   wasp.EventMask.SWIPE_UPDOWN)
 
@@ -51,9 +64,7 @@ class GridLauncherApp():
                 return
 
         self._page = i
-        wasp.watch.display.mute(True)
-        self._draw()
-        wasp.watch.display.mute(False)
+        scroll_in(self.draw_band, _BANDS, up=event[0] == wasp.EventType.UP)
 
     def touch(self, event):
         page = self._get_page(self._page)
@@ -78,36 +89,38 @@ class GridLauncherApp():
             page.append(None)
         return page
 
-    def _draw_indicator(self):
-        """Draw the page indicator down the right hand edge."""
-        cards.scrollbar(wasp.watch.drawable, self._page, self._num_pages,
-                        wasp.system.theme('scroll-indicator'))
-
-    def _draw(self):
-        """Redraw the display from scratch."""
+    def _draw_app(self, app, x, y):
+        """Draw one tile with its top left corner at x, y."""
         draw = wasp.watch.drawable
-        tile = _TILE_COLOR
+        if not app:
+            # An empty slot gets no tile, but it still has to be cleared:
+            # only the gaps around the tiles are blanked before this runs,
+            # so whatever the last page left here would otherwise show.
+            draw.fill(0, x, y, _TILE, _TILE)
+            return
 
-        def draw_app(app, x, y):
-            if not app:
-                # An empty slot gets no tile at all.
-                return
-            draw.rounded_rect(x, y, _TILE, _TILE, tile)
-            icon = getattr(app, 'ICON', None)
-            if not icon:
-                icon = icons.app
-            if len(icon) == 3:
-                draw.rleblit(icon, (x + _INSET, y + _INSET),
-                             wasp.system.theme('bright'), tile)
-            else:
-                draw.blit(icon, x + _INSET, y + _INSET)
+        draw.rounded_rect(x, y, _TILE, _TILE, _TILE_COLOR)
+        icon = getattr(app, 'ICON', None)
+        if not icon:
+            icon = icons.app
+        if len(icon) == 3:
+            draw.rleblit(icon, (x + _INSET, y + _INSET),
+                         wasp.system.theme('bright'), _TILE_COLOR)
+        else:
+            draw.blit(icon, x + _INSET, y + _INSET)
 
-        # Clear to black explicitly: fill() would otherwise reuse whatever
-        # background colour the last set_color left behind.
-        draw.fill(0)
+    def draw_band(self, top, y, height):
+        """Draw the page rows from top to top+height at screen row y."""
+        clear_around(y, height, top, _EDGES, _TILE, _EDGES, _TILE)
 
         page = self._get_page(self._page)
         for i in range(9):
-            draw_app(page[i], _EDGES[i % 3], _EDGES[i // 3])
+            row = _EDGES[i // 3]
+            if top <= row < top + height:
+                self._draw_app(page[i], _EDGES[i % 3], y + row - top)
 
-        self._draw_indicator()
+        draw_indicator(self._page, self._num_pages, top, y, height)
+
+    def _draw(self):
+        """Redraw the display from scratch."""
+        self.draw_band(0, 0, 240)

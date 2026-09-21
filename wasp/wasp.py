@@ -274,6 +274,7 @@ class Manager():
         """Cached copy of the current vibrator pulse duration in milliseconds"""
         return self._nfylev_ms
 
+<<<<<<< HEAD
     def _retire(self):
         """Background the foreground application and let go of it."""
         app = self.app
@@ -288,6 +289,25 @@ class Manager():
         self.app = None
         self.app_entry = None
         gc.collect()
+=======
+    def _resolve(self, app):
+        """Build an application from its entry, if it is not built already.
+
+        :param app: An application or an AppEntry
+        :returns:   (application, entry or None), or None if there is
+                    nothing to switch to
+        """
+        if not isinstance(app, AppEntry):
+            return (app, None)
+        if self.app_entry is app and self.app:
+            return None
+        if app.no_except:
+            try:
+                return (app.load(), app)
+            except:
+                return None
+        return (app.load(), app)
+>>>>>>> c72bfc5 (feat(ui): slide pages in using the panel's own scrolling)
 
     def switch(self, app):
         """Switch to the requested application.
@@ -297,6 +317,7 @@ class Manager():
         the launcher occupy memory. An application referenced from elsewhere,
         by a pending alarm for instance, stays alive on that reference.
         """
+<<<<<<< HEAD
         if isinstance(app, AppEntry):
             if self.app_entry is app and self.app:
                 return
@@ -321,7 +342,18 @@ class Manager():
                 return
         else:
             entry = None
+=======
+        loaded = self._resolve(app)
+        if loaded:
+            self._switch(*loaded)
+>>>>>>> c72bfc5 (feat(ui): slide pages in using the panel's own scrolling)
 
+    def _switch(self, app, entry):
+        """Switch to an application that is already built.
+
+        :param app:   The application to show
+        :param entry: The entry it came from, or None if it was passed in
+        """
         if self.app is app:
             return
 
@@ -349,9 +381,47 @@ class Manager():
         # else kept hold of it, so let the collector take it back.
         gc.collect()
         watch.display.mute(True)
+        watch.display.set_scroll_area()
+        watch.display.scroll(0)
         watch.drawable.reset()
         app.foreground()
         watch.display.mute(False)
+
+    def slide(self, app):
+        """Switch to an application by sliding it up into view.
+
+        Only an application that can draw itself a band at a time can slide,
+        because just 80 rows can be staged ahead of the display, so anything
+        else is switched the usual way.
+        """
+        loaded = self._resolve(app)
+        if not loaded:
+            return
+        (app, entry) = loaded
+
+        if self.app is app or 'sliding' not in dir(app) \
+                or watch.display.scroll_offset:
+            self._switch(app, entry)
+            return
+
+        if self.app:
+            if 'background' in dir(self.app):
+                try:
+                    self.app.background()
+                except:
+                    self.app = True
+                    raise
+
+        # Clear out any configuration from the old application
+        self.event_mask = 0
+        self.tick_period_ms = 0
+        self.tick_expiry = None
+
+        self.app = app
+        self.app_entry = entry
+        gc.collect()
+        watch.drawable.reset()
+        app.sliding()
 
     def navigate(self, direction=None):
         """Navigate to a new application.
@@ -388,7 +458,7 @@ class Manager():
                 i = 0
             self.switch(app_list[i])
         elif direction == EventType.UP:
-            self.switch(self.launcher)
+            self.slide(self.launcher)
         elif direction == EventType.DOWN:
             if current is not app_list[0]:
                 self.switch(app_list[0])

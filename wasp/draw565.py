@@ -253,8 +253,20 @@ class Draw565(object):
             self._rle2bit(image, x, y, fg, c1, c2)
 
     @micropython.native
-    def rleblit(self, image, pos=(0, 0), fg=0xffff, bg=0):
+    def rleblit(self, image, pos=(0, 0), fg=0xffff, bg=0, first=0, rows=None):
         """Decode and draw a 1-bit RLE image.
+
+        Part of an image can be drawn on its own, which lets a caller split
+        a drawing into pieces small enough to fit between two frames of an
+        animation. The rows before `first` are decoded and thrown away,
+        because a run length stream cannot be entered part way through.
+
+        :param image: The image, as a (width, height, runs) tuple
+        :param pos:   Where to put the first row that is drawn
+        :param fg:    Colour of the set pixels
+        :param bg:    Colour of the clear pixels
+        :param first: First row of the image to draw
+        :param rows:  How many rows to draw, defaulting to the rest
 
         .. deprecated:: M2
             Use :py:meth:`~.blit` instead.
@@ -263,11 +275,16 @@ class Draw565(object):
         write_data = display.write_data
         (sx, sy, rle) = image
 
-        display.set_window(pos[0], pos[1], sx, sy)
+        if rows is None:
+            rows = sy - first
+        last = first + rows
+
+        display.set_window(pos[0], pos[1], sx, rows)
 
         buf = display.linebuffer[0:2*sx]
         bp = 0
         color = bg
+        row = 0
 
         for rl in rle:
             while rl:
@@ -277,8 +294,12 @@ class Draw565(object):
                 rl -= count
 
                 if bp >= sx:
-                    write_data(buf)
+                    if row >= first:
+                        write_data(buf)
+                    row += 1
                     bp = 0
+                    if row >= last:
+                        return
 
             if color == bg:
                 color = fg

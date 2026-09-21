@@ -64,21 +64,34 @@ def edges(sizes, start=MARGIN):
     return tuple(placed)
 
 
-def scrollbar(draw, current, pages, on, off=COLOR):
+def scrollbar(draw, current, pages, on, off=COLOR, top=0, y=0, height=240):
     """Draw one segment per page down the right hand edge.
 
     Both colours are greys against the black background, so the bar marks
     where the page sits without competing with the cards.
+
+    A page being slid into view arrives a band at a time, so the last three
+    arguments let a caller draw only the part of the bar that falls inside
+    the band it is drawing. They default to the whole screen, which is what
+    an ordinary redraw wants.
 
     :param draw:    Drawable to render with
     :param current: Index of the page being shown
     :param pages:   How many pages there are
     :param on:      Colour of the current page, usually the scroll-indicator theme
     :param off:     Colour of the other pages
+    :param top:     First row of the page being drawn
+    :param y:       Screen row that top is drawn at
+    :param height:  How many rows are being drawn
     """
     if pages < 2:
         return
-    height = 240 // pages
+    pitch = 240 // pages
     for i in range(pages):
+        # Keep to the part of the segment that lies inside the band.
+        first = max(i * pitch + 2, top)
+        last = min((i + 1) * pitch - 2, top + height)
+        if last <= first:
+            continue
         draw.fill(on if i == current else off,
-                  SCROLLBAR_X, i * height + 2, SCROLLBAR, height - 4)
+                  SCROLLBAR_X, y + first - top, SCROLLBAR, last - first)

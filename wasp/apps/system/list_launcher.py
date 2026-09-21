@@ -20,13 +20,14 @@ import cards
 import fonts
 import icons
 
+from widgets.page import bounds, scroll_in, draw_indicator, clear_around
+
 from micropython import const
 
 _ROWS = const(4)
-# Height and top edge of each row.
+# Height, top edge and spacing of each row.
 _HEIGHT = cards.size(_ROWS)
 _TOPS = cards.edges((_HEIGHT,) * _ROWS)
-# Row spacing, used to work out which row a touch landed on.
 _PITCH = _TOPS[1] - _TOPS[0]
 _MARGIN = cards.MARGIN
 _WIDTH = cards.SPAN
@@ -36,6 +37,8 @@ _ICON_Y = const(11)
 _NAME_X = const(54)
 # Colour of a tile, a dark grey that lets the white icons carry the page.
 _TILE_COLOR = cards.COLOR
+# Where a sliding page may be cut into bands.
+_BANDS = bounds(_TOPS, _HEIGHT)
 
 
 class ListLauncherApp():
@@ -47,6 +50,15 @@ class ListLauncherApp():
         """Activate the application."""
         self._page = 0
         self._draw()
+        self._subscribe()
+
+    def sliding(self):
+        """Activate the application as it slides up into view."""
+        self._page = 0
+        scroll_in(self.draw_band, _BANDS)
+        self._subscribe()
+
+    def _subscribe(self):
         wasp.system.request_event(wasp.EventMask.TOUCH |
                                   wasp.EventMask.SWIPE_UPDOWN)
 
@@ -66,9 +78,7 @@ class ListLauncherApp():
                 return
 
         self._page = i
-        wasp.watch.display.mute(True)
-        self._draw()
-        wasp.watch.display.mute(False)
+        scroll_in(self.draw_band, _BANDS, up=event[0] == wasp.EventType.UP)
 
     def touch(self, event):
         page = self._get_page(self._page)
@@ -91,39 +101,41 @@ class ListLauncherApp():
             page.append(None)
         return page
 
-    def _draw_indicator(self):
-        """Draw the page indicator down the right hand edge."""
-        cards.scrollbar(wasp.watch.drawable, self._page, self._num_pages,
-                        wasp.system.theme('scroll-indicator'))
-
-    def _draw(self):
-        """Redraw the display from scratch."""
+    def _draw_app(self, app, y):
+        """Draw one tile with its top edge at screen row y."""
         draw = wasp.watch.drawable
+        if not app:
+            # An empty row still has to be cleared: only the gaps around
+            # the tiles are blanked before this runs.
+            draw.fill(0, _MARGIN, y, _WIDTH, _HEIGHT)
+            return
         bright = wasp.system.theme('bright')
 
-        def draw_app(app, y):
-            if not app:
-                # An empty slot gets no tile at all.
-                return
-            draw.rounded_rect(_MARGIN, y, _WIDTH, _HEIGHT, _TILE_COLOR)
-            icon = getattr(app, 'ICON', None)
-            if not icon:
-                icon = icons.app
-            if len(icon) == 3:
-                draw.rleblit(icon, (_ICON_X, y + _ICON_Y), bright, _TILE_COLOR)
-            else:
-                draw.blit(icon, _ICON_X, y + _ICON_Y)
-            draw.set_color(bright, _TILE_COLOR)
-            draw.string(app.NAME, _NAME_X, y + 16,
-                        _MARGIN + _WIDTH - _NAME_X)
+        draw.rounded_rect(_MARGIN, y, _WIDTH, _HEIGHT, _TILE_COLOR)
+        icon = getattr(app, 'ICON', None)
+        if not icon:
+            icon = icons.app
+        if len(icon) == 3:
+            draw.rleblit(icon, (_ICON_X, y + _ICON_Y), bright, _TILE_COLOR)
+        else:
+            draw.blit(icon, _ICON_X, y + _ICON_Y)
+        draw.set_color(bright, _TILE_COLOR)
+        draw.string(app.NAME, _NAME_X, y + 16, _MARGIN + _WIDTH - _NAME_X)
 
-        # Clear to black explicitly: fill() would otherwise reuse whatever
-        # background colour the last set_color left behind.
-        draw.fill(0)
+    def draw_band(self, top, y, height):
+        """Draw the page rows from top to top+height at screen row y."""
+        draw = wasp.watch.drawable
         draw.set_font(fonts.sans24)
+        clear_around(y, height, top, _TOPS, _HEIGHT, (_MARGIN,), _WIDTH)
 
         page = self._get_page(self._page)
         for (i, app) in enumerate(page):
-            draw_app(app, _TOPS[i])
+            tile = _MARGIN + i * _PITCH
+            if top <= tile < top + height:
+                self._draw_app(app, y + tile - top)
 
-        self._draw_indicator()
+        draw_indicator(self._page, self._num_pages, top, y, height)
+
+    def _draw(self):
+        """Redraw the display from scratch."""
+        self.draw_band(0, 0, 240)

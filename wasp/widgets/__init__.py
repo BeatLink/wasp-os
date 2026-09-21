@@ -25,3 +25,4 @@ from widgets.slider import Slider
 from widgets.spinner import Spinner
 from widgets.stopwatch import Stopwatch
 from widgets.confirmation_view import ConfirmationView
+from widgets.page import bounds, scroll_in, draw_indicator
