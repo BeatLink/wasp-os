@@ -23,7 +23,7 @@ import widgets
 import appregistry
 
 from apps.system import steplogger
-from apps.system.launcher import LauncherApp
+from apps.system.grid_launcher import GridLauncherApp
 from apps.system.pager import PagerApp, CrashApp, NotificationApp
 from apps.system.step_counter import StepCounterApp
 from events import EventType, EventMask
@@ -54,7 +54,7 @@ class Manager():
         self.bar = widgets.StatusBar()
 
         self.quick_ring = []
-        self.launcher = LauncherApp()
+        self.launcher = GridLauncherApp()
         self.launcher_ring = []
         self.notifier = NotificationApp()
         self.notifications = {}
