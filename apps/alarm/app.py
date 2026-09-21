@@ -139,6 +139,10 @@ class AlarmApp:
     """Allows the user to set a vibration alarm.
     """
     NAME = 'Alarm'
+    # This app leaves a callback with the scheduler so its alarms still go
+    # off while it is closed, which keeps it in memory whatever the system
+    # does. Say so, and be reused rather than built a second time.
+    PERSIST = True
     ICON = icon
 
     def __init__(self):

@@ -160,3 +160,30 @@ def test_settings(system):
         system.step()
 
     assert(start_point == system.app._current_setting)
+
+def test_the_alarm_app_is_reused_rather_than_rebuilt(system):
+    from apps.user.alarm import AlarmApp
+    # The app leaves a bound method with the scheduler, so a second instance
+    # would keep the first one alive.
+    assert AlarmApp.PERSIST
+
+def test_registering_the_step_counter_starts_the_sensor(system):
+    """The app resets the accelerometer, but it is not built until opened."""
+    assert hasattr(system, 'steps')
+    # Reading the count is what fails on a sensor that never started.
+    assert wasp.watch.accel.steps >= 0
+
+def test_the_step_graph_survives_a_watch_with_no_step_counter(system):
+    from apps.system.step_counter import StepCounterApp
+
+    app = StepCounterApp()
+    system.switch(app)
+    app._page = 1
+    steps = system.steps
+    del system.steps
+    try:
+        # A watch whose step counter never started has no logger at all,
+        # which the graph page has to cope with rather than raise.
+        app._update_graph()
+    finally:
+        system.steps = steps
