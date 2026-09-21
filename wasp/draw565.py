@@ -70,6 +70,19 @@ def _fill(mv, color: int, count: int, offset: int):
     for x in range(offset, offset+count):
         p[x] = color
 
+def _inset(r, e):
+    """Pixels left bare at each end of the row e rows in from a card's edge.
+
+    A pixel is left bare when its centre falls outside the corner's circle,
+    tested in doubled coordinates so the half-pixel centres stay integers.
+    """
+    room = 4 * r * r - (2 * (r - e) - 1) ** 2
+    k = 0
+    while (2 * (r - k) - 1) ** 2 > room:
+        k += 1
+    return k
+
+
 def _bounding_box(s, font):
     if not s:
         return (0, font.height())
@@ -150,9 +163,10 @@ class Draw565(object):
         if h is None:
             h = display.height - y
 
+        # A string wider than its box asks for negative padding.
+        if w <= 0 or h <= 0:
+            return
         remaining = w * h
-        if remaining == 0:
-          return
 
         display.set_window(x, y, w, h)
 
@@ -167,6 +181,59 @@ class Draw565(object):
             remaining -= sz
         if remaining:
             quick_write(buf[0:2*remaining])
+        display.quick_end()
+
+    def rounded_rect(self, x, y, w, h, color=None, bg=0, radius=12):
+        """Draw a solid colour rectangle with rounded corners.
+
+        The corners are quarter circles worked out row by row, so any radius
+        can be drawn without a bitmap for it.
+
+        Example:
+
+        .. code-block:: python
+
+            draw = wasp.watch.drawable
+            draw.rounded_rect(4, 4, 75, 75, 0x3186)
+
+        :param x:      X coordinate of the left-most pixels of the rectangle
+        :param y:      Y coordinate of the top-most pixels of the rectangle
+        :param w:      Width of the rectangle
+        :param h:      Height of the rectangle
+        :param color:  Colour to draw with, defaults to the foreground colour
+        :param bg:     Colour showing through outside the corners
+        :param radius: Corner radius, shrunk to fit a rectangle too small
+                       for it
+        """
+        if color is None:
+            color = self._bgfg & 0xffff
+
+        r = min(radius, w // 2, h // 2)
+        if r:
+            self._arc_rows(x, y, w, r, h, 0, r, color, bg)
+        self.fill(color, x, y + r, w, h - 2 * r)
+        if r:
+            self._arc_rows(x, y, w, r, h, h - r, h, color, bg)
+
+    @micropython.native
+    def _arc_rows(self, x, y, w, r, h, start, end, color, bg):
+        """Draw rows start to end of a rounded rectangle's curved ends."""
+        display = self._display
+        quick_write = display.quick_write
+        buf = display.linebuffer[0:2*w]
+
+        # Only the outer r pixels at each end ever change from row to row.
+        _fill(buf, color, w, 0)
+
+        display.set_window(x, y + start, w, end - start)
+        display.quick_start()
+        for row in range(start, end):
+            k = _inset(r, min(row, h - 1 - row))
+            _fill(buf, bg, k, 0)
+            _fill(buf, color, r - k, k)
+            _fill(buf, color, r - k, w - r)
+            _fill(buf, bg, k, w - k)
+            quick_write(buf)
         display.quick_end()
 
     @micropython.native

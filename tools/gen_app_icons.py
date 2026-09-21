@@ -16,7 +16,6 @@ import json
 import os.path
 import re
 import shutil
-import subprocess
 import sys
 
 from PIL import Image, ImageFont
@@ -31,14 +30,6 @@ GLYPHMAP = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 # Size of the square the glyph is fitted into.
 SIZE = 32
-
-# The launcher tiles, drawn behind the icons.
-BACKGROUNDS = (
-    ('wasp/apps/system/grid_launcher.py', 'background',
-     'res/ui/backgrounds/3x3.png', 'res/ui/backgrounds/3x3.svg'),
-    ('wasp/apps/system/list_launcher.py', 'background',
-     'res/ui/backgrounds/4x1.png', 'res/ui/backgrounds/4x1.svg'),
-)
 
 # Glyph for each app, as (source file, variable, PNG, glyph name).
 ICONS = (
@@ -135,24 +126,8 @@ def replace(source, name, image, png):
         f.writelines(lines[:start] + body + lines[end:])
 
 
-def bake(svg, png):
-    """Render an SVG to a monochrome PNG the size of the screen."""
-    subprocess.run(('inkscape', '--export-type=png', '--export-width=240',
-                    '--export-height=240', '--export-background=black',
-                    '--export-filename=' + png, svg), check=True,
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    im = Image.open(png).convert('L')
-    im = im.point(lambda p: 255 if p >= 128 else 0).convert('1')
-    im.save(png)
-    return im
-
-
 def main():
     glyphs = json.load(open(GLYPHMAP))
-
-    for (source, name, png, svg) in BACKGROUNDS:
-        replace(source, name, rle_encode.encode(bake(svg, png)), svg)
-        print('{:<40} {:<24} {}'.format(source, name, svg))
 
     for (source, name, png, glyph) in ICONS:
         if glyph not in glyphs:
