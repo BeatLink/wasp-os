@@ -23,6 +23,7 @@ from machine import I2C
 from machine import Pin
 #from machine import Signal
 from machine import SPI
+from machine import mem32
 
 from drivers.battery import Battery
 from drivers.bma421 import BMA421
@@ -63,6 +64,12 @@ class Backlight(object):
 backlight = Backlight(0)
 spi = SPI(0)
 spi.init(polarity=1, phase=1, baudrate=8000000)
+
+# The baudrate above does not reach the peripheral, which stays at the 1 Mbps
+# the constructor defaults to, and everything drawn is eight times slower than
+# it should be. Set the frequency register directly until the port is fixed.
+# 0x40003524 is SPI0's FREQUENCY and 0x80000000 selects 8 Mbps.
+mem32[0x40003524] = 0x80000000
 display = ST7789_SPI(240, 240, spi,
         cs=Pin("DISP_CS", Pin.OUT),
         dc=Pin("DISP_DC", Pin.OUT),
