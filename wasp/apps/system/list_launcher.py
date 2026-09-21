@@ -106,7 +106,9 @@ class ListLauncherApp():
                 # An empty slot gets no tile at all.
                 return
             draw.rounded_rect(_MARGIN, y, _WIDTH, _HEIGHT, _TILE_COLOR)
-            icon = app.ICON if 'ICON' in dir(app) else icons.app
+            icon = getattr(app, 'ICON', None)
+            if not icon:
+                icon = icons.app
             if len(icon) == 3:
                 draw.rleblit(icon, (_ICON_X, y + _ICON_Y), bright, _TILE_COLOR)
             else:

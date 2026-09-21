@@ -93,7 +93,9 @@ class GridLauncherApp():
                 # An empty slot gets no tile at all.
                 return
             draw.rounded_rect(x, y, _TILE, _TILE, tile)
-            icon = app.ICON if 'ICON' in dir(app) else icons.app
+            icon = getattr(app, 'ICON', None)
+            if not icon:
+                icon = icons.app
             if len(icon) == 3:
                 draw.rleblit(icon, (x + _INSET, y + _INSET),
                              wasp.system.theme('bright'), tile)

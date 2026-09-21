@@ -23,7 +23,6 @@ import widgets
 import appregistry
 
 from apps.system import steplogger
-from apps.system.grid_launcher import GridLauncherApp
 from apps.system.pager import PagerApp, CrashApp, NotificationApp
 from apps.system.step_counter import StepCounterApp
 from events import EventType, EventMask
@@ -32,6 +31,76 @@ from pin_handler import PinHandler
 def _key_app(d):
     """Get a sort key for apps."""
     return d.NAME
+
+
+class AppEntry():
+    """An application the system knows about but has not loaded.
+
+    The rings hold these rather than application objects, so an application
+    costs a name and a path until the moment it is opened. Its icon is read
+    the first time the launcher asks for it and then kept, which is free:
+    frozen images live in flash and only the reference is in RAM.
+    """
+    __slots__ = ('path', 'NAME', 'no_except', '_icon')
+
+    def __init__(self, path, name, no_except=False):
+        self.path = path
+        self.NAME = name
+        self.no_except = no_except
+        self._icon = None
+
+    @property
+    def ICON(self):
+        if self._icon is None:
+            try:
+                self._icon = _peek(self.path, 'ICON')
+            except:
+                self._icon = False
+        return self._icon if self._icon else None
+
+    def load(self):
+        """Import the module, build the application and drop the module."""
+        return _load(self.path)
+
+
+def _import(path):
+    """Import the module holding path and return its namespace.
+
+    Collect first. An application used to be built during startup, on a heap
+    with nothing on it; building one on demand happens on a heap that has
+    been in use for a while, and a large application needs room that only a
+    collection will give back.
+    """
+    modname = path[:path.rindex('.')]
+    gc.collect()
+    namespace = {}
+    exec('import ' + modname, namespace)
+    return modname, namespace
+
+
+def _peek(path, attribute):
+    """Read one class attribute without keeping the module loaded."""
+    modname, namespace = _import(path)
+    try:
+        return eval(path + '.' + attribute, namespace)
+    finally:
+        del namespace
+        del sys.modules[modname]
+        gc.collect()
+
+
+def _load(path):
+    """Instantiate path, leaving the module unloaded behind us."""
+    modname, namespace = _import(path)
+    try:
+        # The module is in memory now, so give back whatever importing it
+        # displaced before asking for the application itself.
+        gc.collect()
+        return eval(path + '()', namespace)
+    finally:
+        del namespace
+        del sys.modules[modname]
+        gc.collect()
 
 def _key_alarm(d):
     """Get a sort key for alarms."""
@@ -50,11 +119,17 @@ class Manager():
 
     def __init__(self):
         self.app = None
+        self.app_entry = None
 
         self.bar = widgets.StatusBar()
 
         self.quick_ring = []
-        self.launcher = GridLauncherApp()
+        # The launcher is built when it is opened and dropped when it is
+        # left, like every other application. Holding it meant the watch
+        # face, the launcher and whatever was opened from it were all in
+        # memory at once, which the alarm app could not fit alongside.
+        self.launcher = AppEntry('apps.system.grid_launcher.GridLauncherApp',
+                                 'Launcher')
         self.launcher_ring = []
         self.notifier = NotificationApp()
         self.notifications = {}
@@ -115,41 +190,45 @@ class Manager():
         """Register the default applications."""
 
         for app in appregistry.autoload_list:
-            self.register(app[0], app[1], app[2], app[3])
+            self.register(app[0], app[1], app[2], app[3], app[4])
 
-        self.register('apps.system.step_counter.StepCounterApp', True, no_except=True)
-        self.register('apps.system.settings.SettingsApp', no_except=True)
-        self.register('apps.system.software.SoftwareApp', no_except=True)
+        self.register('apps.system.step_counter.StepCounterApp', True,
+                      no_except=True, name='Steps')
+        self.register('apps.system.settings.SettingsApp', no_except=True,
+                      name='Settings')
+        self.register('apps.system.software.SoftwareApp', no_except=True,
+                      name='Software')
 
-    def register(self, app, quick_ring=False, watch_face=False, no_except=False):
+    def register(self, app, quick_ring=False, watch_face=False, no_except=False,
+                 name=None):
         """Register an application with the system.
 
-        :param object app: The application to register
+        An application named by its path is recorded rather than built, and is
+        not loaded until something switches to it. Pass its name too, so the
+        launcher can list it without loading anything.
+
+        :param object app: The application to register, or the path to it
         :param object quick_ring: Place the application on the quick ring
         :param object watch_face: Make the new application the default watch face
-        :param object no_except: Ignore exceptions when instantiating applications
+        :param object no_except: Ignore exceptions when loading the application
+        :param object name: Name to list a path under, defaulting to its class
         """
         if isinstance(app, str):
-            # Import into a throwaway namespace so the module can be unloaded once the app is instantiated.
-            modname = app[:app.rindex('.')]
-            namespace = {}
-            exec('import ' + modname, namespace)
-            if no_except:
+            if not name:
+                name = app[app.rindex('.') + 1:]
+                if name.endswith('App'):
+                    name = name[:-3]
+            # "Special case" for watches that have working step counters!
+            # More usefully it allows other apps to detect the presence or
+            # absence of a working step counter by looking at
+            # wasp.system.steps .
+            if app.endswith('.StepCounterApp'):
                 try:
-                    app = eval(app + '()', namespace)
+                    self.steps = steplogger.StepLogger(self)
                 except:
-                    app = None
-            else:
-                    app = eval(app + '()', namespace)
-            del namespace
-            del sys.modules[modname]
-            if not app:
-                return
-
-        # "Special case" for watches that have working step counters!
-        # More usefully it allows other apps to detect the presence/absence
-        # of a working step counter by looking at wasp.system.steps .
-        if isinstance(app, StepCounterApp):
+                    pass
+            app = AppEntry(app, name, no_except)
+        elif isinstance(app, StepCounterApp):
             self.steps = steplogger.StepLogger(self)
 
         if watch_face:
@@ -161,8 +240,12 @@ class Manager():
             self.launcher_ring.sort(key = _key_app)
 
     def unregister(self, cls):
+        """Remove an application from the launcher.
+
+        :param cls: The application's class, or the name it is listed under
+        """
         for app in self.launcher_ring:
-            if isinstance(app, cls):
+            if app.NAME == cls if isinstance(cls, str) else isinstance(app, cls):
                 self.launcher_ring.remove(app)
                 break
 
@@ -191,9 +274,54 @@ class Manager():
         """Cached copy of the current vibrator pulse duration in milliseconds"""
         return self._nfylev_ms
 
+    def _retire(self):
+        """Background the foreground application and let go of it."""
+        app = self.app
+        if app and 'background' in dir(app):
+            try:
+                app.background()
+            except:
+                # Leave something truthy behind so switching to the crash
+                # handler does not run the start up path again.
+                self.app = True
+                raise
+        self.app = None
+        self.app_entry = None
+        gc.collect()
+
     def switch(self, app):
         """Switch to the requested application.
+
+        An unloaded application is built here and dropped again as soon as
+        something else is switched to, so only the foreground application and
+        the launcher occupy memory. An application referenced from elsewhere,
+        by a pending alarm for instance, stays alive on that reference.
         """
+        if isinstance(app, AppEntry):
+            if self.app_entry is app and self.app:
+                return
+            entry = app
+            # Let the outgoing application go before building the new one.
+            # Two of them will not fit at once, and the one being left is
+            # usually the launcher, which is the larger.
+            self._retire()
+            if entry.no_except:
+                try:
+                    app = entry.load()
+                except:
+                    app = None
+            else:
+                app = entry.load()
+            if not app:
+                # Nothing is running now, so fall back to the watch face
+                # rather than leave the system with no application at all.
+                face = self.quick_ring[0]
+                if entry is not face:
+                    self.switch(face)
+                return
+        else:
+            entry = None
+
         if self.app is app:
             return
 
@@ -216,6 +344,10 @@ class Manager():
         self.tick_expiry = None
 
         self.app = app
+        self.app_entry = entry
+        # The outgoing application is unreachable by now unless something
+        # else kept hold of it, so let the collector take it back.
+        gc.collect()
         watch.display.mute(True)
         watch.drawable.reset()
         app.foreground()
@@ -237,17 +369,19 @@ class Manager():
         """
         app_list = self.quick_ring
 
+        current = self.app_entry if self.app_entry else self.app
+
         if direction == EventType.LEFT:
-            if self.app in app_list:
-                i = app_list.index(self.app) + 1
+            if current in app_list:
+                i = app_list.index(current) + 1
                 if i >= len(app_list):
                     i = 0
             else:
                 i = 0
             self.switch(app_list[i])
         elif direction == EventType.RIGHT:
-            if self.app in app_list:
-                i = app_list.index(self.app) - 1
+            if current in app_list:
+                i = app_list.index(current) - 1
                 if i < 0:
                     i = len(app_list)-1
             else:
@@ -256,7 +390,7 @@ class Manager():
         elif direction == EventType.UP:
             self.switch(self.launcher)
         elif direction == EventType.DOWN:
-            if self.app != app_list[0]:
+            if current is not app_list[0]:
                 self.switch(app_list[0])
             else:
                 if len(self.notifications):
