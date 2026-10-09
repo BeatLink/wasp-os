@@ -79,7 +79,11 @@ micropython: build-$(BOARD_SAFE) wasp/boards/manifest_user_apps.py wasp/boards/$
 		--application micropython/ports/nrf/build-$(BOARD)-s132/firmware.hex \
 		build-$(BOARD)/micropython.zip
 
-wasp/boards/manifest_user_apps.py: wasp.toml
+# The copies under wasp/apps/user are built from these sources, so editing an
+# app has to rebuild them or the firmware is flashed with stale code.
+APP_SOURCES = $(wildcard apps/*/*.py apps/*.py)
+
+wasp/boards/manifest_user_apps.py: wasp.toml $(APP_SOURCES)
 	$(RM) -r \
 		wasp/apps/user \
 		wasp/boards/manifest_user_apps.py \
