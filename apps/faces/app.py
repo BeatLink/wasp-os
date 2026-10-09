@@ -24,8 +24,11 @@ class FacesApp():
     def foreground(self):
         """Activate the application."""
         choices = []
-        for face in appregistry.faces_list:
-            choices.append(face)
+        for (module, label) in appregistry.faces_list:
+            choices.append(('{}.{}App'.format(module, label), label))
+        for face in wasp.packages('face'):
+            choices.append(('pkg.{}.app.{}'.format(face['name'], face['cls']),
+                            face.get('label', face['name'])))
 
         self.choices = choices
         self.choice = 0
@@ -64,9 +67,8 @@ class FacesApp():
     def _update(self):
         """Draw the display from scratch."""
         wasp.watch.drawable.fill()
-        (module, label) = self.choices[self.choice]
-        wasp.system.register('{}.{}App'.format(module, label), watch_face=True,
-                             name=label)
+        (path, label) = self.choices[self.choice]
+        wasp.system.register(path, watch_face=True, name=label)
         # Previewing means building the face, which a registered entry is not.
         face = wasp.system.quick_ring[0]
         if isinstance(face, wasp.AppEntry):

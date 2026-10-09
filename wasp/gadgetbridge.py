@@ -75,3 +75,14 @@ def send_cmd(cmd = ''):
         time.sleep(0.2)
     print(' ')
     print(' ')
+
+
+class _Packages():
+    """The package manager, imported for each call the phone makes and let go of afterwards."""
+
+    def __getattr__(self, name):
+        return lambda *args: wasp._pkgmgr(name, *args)
+
+
+# Every main.py imports this module's names, so the companion app finds pkg there.
+pkg = _Packages()

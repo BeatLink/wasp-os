@@ -26,12 +26,22 @@ try:
 except ImportError:
     micropython = None
 
+import select
+
 PKG_DIR = 'pkg'
 INDEX = 'pkg/index.json'
 
-# Bytes to take per read in raw mode. The buffer between the radio and Python
-# is small, and a flash write can stall for milliseconds, so stay under it.
-WINDOW = 96
+# Half the radio's receive buffer, which is 1 KB on firmware that offers raw transfer.
+WINDOW = 512 if hasattr(sys.stdin, 'buffer') else 96
+
+# How long input must stay quiet before a raw transfer starts, in milliseconds.
+SETTLE = 100
+
+# How long a raw transfer waits for the next bytes before giving up, in milliseconds.
+STALL = 10000
+
+# Bytes read at a time in raw mode, small enough to find room for on a busy heap.
+PIECE = 64
 
 # Fields the index keeps, so that nothing needs importing before the launcher
 # can draw.
@@ -103,6 +113,17 @@ def load_index():
     return index
 
 
+def enabled(kind='app'):
+    """Return the index entries of the enabled packages of one kind.
+
+    Start up calls this, so it reads the index as it stands and never rebuilds
+    it, which would write to the flash on every boot of a watch with nothing
+    installed.
+    """
+    return [entry for entry in _load(INDEX, {}).values()
+            if entry.get('enabled') and entry.get('kind', 'app') == kind]
+
+
 def reindex(quiet=False):
     """Rebuild the index by reading each package's manifest."""
     index = {}
@@ -163,6 +184,64 @@ def ls():
     _reply(ok=True, pkgs=packages)
 
 
+def _drain(poller, one):
+    """Discard input until it has been quiet for SETTLE milliseconds.
+
+    Before a raw transfer this removes the line feed after its command: the
+    REPL ends a line at the carriage return, so the line feed is still waiting
+    and would become the first byte of the file. After a failed transfer it
+    swallows the rest of the file, so none of it reaches the REPL as input.
+    """
+    while poller.poll(SETTLE):
+        sys.stdin.buffer.readinto(one)
+
+
+def _recv_raw(f, size, poller, buf):
+    """Read size raw bytes in windows, acknowledging each, and return their sum.
+
+    Everything it needs is allocated before the transfer starts, because a
+    watch that has been running for a while may have no single block of a
+    window's size left.
+    """
+    view = memoryview(buf)
+    got = 0
+    checksum = 0
+    while got < size:
+        end = min(got + WINDOW, size)
+        while got < end:
+            n = min(PIECE, end - got)
+            piece = view if n == PIECE else view[:n]
+            if not poller.poll(STALL):
+                raise OSError('the sender stopped')
+            sys.stdin.buffer.readinto(piece)
+            f.write(piece)
+            i = 0
+            while i < n:
+                checksum += buf[i]
+                i += 1
+            got += n
+        checksum &= 0xffffffff
+        _reply(ack=got)
+    return got, checksum
+
+
+def _recv_b64(f, size):
+    """Read base64 lines until size bytes have arrived, and return their sum."""
+    got = 0
+    checksum = 0
+    while got < size:
+        chunk = binascii.a2b_base64(input())
+        if not chunk:
+            break
+        f.write(chunk)
+        got += len(chunk)
+        for byte in chunk:
+            checksum += byte
+        checksum &= 0xffffffff
+        _reply(ack=got)
+    return got, checksum
+
+
 def recv(path, size, b64=False):
     """Receive a file of exactly size bytes.
 
@@ -176,27 +255,27 @@ def recv(path, size, b64=False):
         return
 
     _mkdirs(path)
-    got = 0
-    checksum = 0
-
-    if not b64 and micropython:
-        micropython.kbd_intr(-1)
+    if not b64:
+        poller = select.poll()
+        poller.register(sys.stdin, select.POLLIN)
+        buf = bytearray(PIECE)
+        one = memoryview(buf)[:1]
+        if micropython:
+            micropython.kbd_intr(-1)
     try:
+        if not b64:
+            _drain(poller, one)
         _reply(ok=True, rx=size)
         with open(path, 'wb') as f:
-            while got < size:
-                if b64:
-                    chunk = binascii.a2b_base64(input())
-                else:
-                    chunk = sys.stdin.buffer.read(min(WINDOW, size - got))
-                if not chunk:
-                    break
-                f.write(chunk)
-                got += len(chunk)
-                for byte in chunk:
-                    checksum += byte
-                checksum &= 0xffffffff
-                _reply(ack=got)
+            if b64:
+                got, checksum = _recv_b64(f, size)
+            else:
+                got, checksum = _recv_raw(f, size, poller, buf)
+    except Exception as e:
+        if not b64:
+            _drain(poller, one)
+        _reply(ok=False, err=str(e))
+        return
     finally:
         if not b64 and micropython:
             micropython.kbd_intr(3)

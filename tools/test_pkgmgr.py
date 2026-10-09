@@ -250,19 +250,92 @@ def test_recv_raw_rejected_without_stdin_buffer(flash, replies, monkeypatch):
     assert 'b64' in replies[-1]['err']
 
 
-def test_recv_raw_reads_from_stdin_buffer(flash, replies, monkeypatch):
-    payload = bytes(range(200))
+@pytest.fixture
+def pipe_stdin(monkeypatch):
+    """Stand a pipe in for the radio, so select and readinto behave as on the watch.
 
-    class FakeStdin:
-        buffer = io.BytesIO(payload)
+    Returns a list to fill with the payload, which is written into the pipe
+    only once the manager replies that it is ready, as a real sender does.
+    """
+    read_end, write_end = os.pipe()
+    payload = []
+    replies = []
 
-    monkeypatch.setattr(pkgmgr.sys, 'stdin', FakeStdin())
+    class PipeStdin:
+        buffer = os.fdopen(read_end, 'rb', buffering=0)
+
+        def fileno(self):
+            return read_end
+
+    def reply(**kwargs):
+        replies.append(kwargs)
+        if kwargs.get('rx'):
+            os.write(write_end, b''.join(payload))
+
+    monkeypatch.setattr(pkgmgr.sys, 'stdin', PipeStdin())
     monkeypatch.setattr(pkgmgr, 'micropython', None)
+    monkeypatch.setattr(pkgmgr, '_reply', reply)
+    monkeypatch.setattr(pkgmgr, 'SETTLE', 20)
+    monkeypatch.setattr(pkgmgr, 'STALL', 200)
+    return payload, replies, write_end, PipeStdin.buffer
 
-    pkgmgr.recv('pkg/a/app.mpy', len(payload), b64=False)
 
-    assert (flash / 'pkg' / 'a' / 'app.mpy').read_bytes() == payload
-    assert replies[-1]['ok'] is True
+def test_recv_raw_reads_from_stdin_buffer(flash, pipe_stdin):
+    payload, replies, _, _ = pipe_stdin
+    data = bytes(range(256)) * 3
+    payload.append(data)
+
+    pkgmgr.recv('pkg/a/app.mpy', len(data), b64=False)
+
+    assert (flash / 'pkg' / 'a' / 'app.mpy').read_bytes() == data
+    assert [r['ack'] for r in replies if 'ack' in r] == [512, 768]
+    assert replies[-1] == {'ok': True, 'got': len(data), 'sum': sum(data)}
+
+
+def test_recv_raw_drops_the_line_feed_left_by_its_command(flash, pipe_stdin):
+    payload, _, write_end, _ = pipe_stdin
+    data = b'\n\x03\x04' + bytes(range(200))
+    payload.append(data)
+    os.write(write_end, b'\n')
+
+    pkgmgr.recv('pkg/a/app.mpy', len(data), b64=False)
+
+    assert (flash / 'pkg' / 'a' / 'app.mpy').read_bytes() == data
+
+
+def test_recv_raw_gives_up_on_a_sender_that_stops(flash, pipe_stdin):
+    payload, replies, _, _ = pipe_stdin
+    payload.append(bytes(100))
+
+    pkgmgr.recv('pkg/a/app.mpy', 300, b64=False)
+
+    assert replies[-1]['ok'] is False
+
+
+def test_recv_raw_swallows_the_rest_of_a_failed_transfer(flash, pipe_stdin, monkeypatch):
+    payload, replies, _, stdin = pipe_stdin
+    payload.append(bytes(300))
+
+    class FullFlash:
+        def __init__(self, *args):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def write(self, data):
+            raise OSError('no space')
+
+    monkeypatch.setattr(pkgmgr, 'open', FullFlash, raising=False)
+
+    pkgmgr.recv('pkg/a/app.mpy', 300, b64=False)
+
+    assert replies[-1] == {'ok': False, 'err': 'no space'}
+    os.set_blocking(stdin.fileno(), False)
+    assert stdin.read(1) is None
 
 
 def test_abi_reports_transfer_support(flash, replies, monkeypatch):
@@ -304,3 +377,20 @@ def test_cfg_rejects_bad_json(flash, replies):
 
     assert replies[-1]['ok'] is False
     assert replies[-1]['err'] == 'bad json'
+
+
+def test_enabled_lists_only_enabled_packages_of_one_kind(flash, replies):
+    make_package(flash, 'calculator')
+    make_package(flash, 'gallery')
+    make_package(flash, 'analog', kind='face')
+    pkgmgr.reindex()
+    pkgmgr.enable('calculator')
+    pkgmgr.enable('analog')
+
+    assert [e['name'] for e in pkgmgr.enabled('app')] == ['calculator']
+    assert [e['name'] for e in pkgmgr.enabled('face')] == ['analog']
+
+
+def test_enabled_never_writes_to_the_flash(flash):
+    assert pkgmgr.enabled() == []
+    assert not (flash / 'pkg').exists()
