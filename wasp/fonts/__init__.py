@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: LGPL-3.0-or-later
 # Copyright (C) 2020 Daniel Thompson
 
-import fonts.sans18 as sans18
-import fonts.sans24 as sans24
-import fonts.sans28 as sans28
-import fonts.sans36 as sans36
+def __getattr__(name):
+    """Import a font the first time it is used."""
+    if name not in ('sans18', 'sans24', 'sans28', 'sans36'):
+        raise AttributeError(name)
+    return __import__('fonts.' + name, None, None, (name,))
 
 def height(font):
     return font.height()
