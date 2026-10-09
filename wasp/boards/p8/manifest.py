@@ -23,6 +23,7 @@ freeze('../..', manifest_240x240.manifest + manifest_user_apps.manifest +
         'drivers/vibrator.py',
         'gadgetbridge.py',
         'pin_handler.py',
+        'pkgmgr.py',
         'ppg.py',
         'shell.py',
         'wasp.py',
