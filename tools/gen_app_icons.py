@@ -41,6 +41,7 @@ ICONS = (
     ('apps/calculator/app.py', 'calc', 'apps/calculator/icon.png', 'calculator'),
     ('apps/demo/app.py', 'demo_icon', 'apps/demo/icon.png', 'wand-magic-sparkles'),
     ('apps/disa_b_l_e/app.py', 'ICON', 'apps/disa_b_l_e/icon.png', 'ban'),
+    ('apps/flashlight/app.py', '_TORCH', 'wasp/resources/torch_icon.png', 'lightbulb'),
     ('apps/four_in_a_row/app.py', 'icon', 'apps/four_in_a_row/icon.png', 'circle-dot'),
     ('apps/gallery/app.py', 'ICON', 'apps/gallery/icon.png', 'image'),
     ('apps/game_of_life/app.py', 'icon', 'apps/game_of_life/icon.png', 'table-cells'),
@@ -66,11 +67,10 @@ ICONS = (
     ('wasp/icons.py', 'clock', 'wasp/resources/clock_icon.png', 'clock'),
     ('wasp/icons.py', 'settings', 'wasp/resources/settings_icon.png', 'gear'),
     ('wasp/icons.py', 'software', 'wasp/resources/software_icon.png', 'download'),
-    ('wasp/icons.py', 'torch', 'wasp/resources/torch_icon.png', 'lightbulb'),
     ('wasp/icons.py', 'steps', 'wasp/resources/steps_icon.png', 'shoe-prints'),
 )
 
-# Apps whose ICON is a shared icon from wasp/icons.py, so their icon.png is a copy of its image.
+# Apps whose icon.png is a copy of an image under wasp/resources.
 SHARED = (
     ('apps/faces/icon.png', 'wasp/resources/clock_icon.png'),
     ('apps/flashlight/icon.png', 'wasp/resources/torch_icon.png'),
