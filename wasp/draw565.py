@@ -17,7 +17,7 @@ G = const(0b00000_111111_00000)
 B = const(0b00000_000000_11111)
 
 @micropython.viper
-def _bitblit(bitbuf, pixels, bgfg: int, count: int):
+def _bitblit(bitbuf, pixels, bgfg: int, count: int, start: int):
     mv = ptr16(bitbuf)
     px = ptr8(pixels)
 
@@ -26,7 +26,7 @@ def _bitblit(bitbuf, pixels, bgfg: int, count: int):
     fg = ((bgfg >>  8) & 0xff) + ((bgfg & 0xff) << 8)
 
     bitselect = 0x80
-    pxp = 0
+    pxp = start
     mvp = 0
 
     for bit in range(count):
@@ -119,7 +119,7 @@ def _draw_glyph(display, glyph, x, y, bgfg, first=0, rows=None):
 
     display.quick_start()
     for row in range(first, first + rows):
-        _bitblit(buf, px[row*bytes_per_row:], bgfg, w)
+        _bitblit(buf, px, bgfg, w, row*bytes_per_row)
         quick_write(buf)
     display.quick_end()
 
