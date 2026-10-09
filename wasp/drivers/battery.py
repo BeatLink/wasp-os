@@ -67,17 +67,17 @@ class Battery(object):
 
         if self._charging.value():  # if charging, reset cache
             if len(cache):
-                cache = array.array("I")
+                self._cache = array.array("I")
             return mv
         if len(cache) < 2:
             cache.append(mv)
             return mv
         if len(cache) > 2:  # should not happen
-            cache = cache[-2:]
+            cache = self._cache = cache[-2:]
         if mv != cache[0] and mv != cache[1]:
             cache[0] = cache[1]
             cache[1] = mv
-        return sum(cache) / 2
+        return sum(cache) // 2
 
     def level(self):
         """Estimate the battery level.
@@ -91,5 +91,5 @@ class Battery(object):
         :returns: Estimate battery level in percent.
         """
         mv = self.voltage_mv()
-        level = int((mv - 3500) / (700) * 100)  # 0.7V is 4.2-3.5V
+        level = (mv - 3500) * 100 // 700  # 0.7V is 4.2-3.5V
         return min(100, max(0, level))
