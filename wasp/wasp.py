@@ -349,8 +349,7 @@ class Manager():
         if path.startswith('pkg.'):
             name = path.split('.')[1]
             return any(face['name'] == name for face in packages('face'))
-        return any('{}.{}App'.format(module, label) == path
-                   for (module, label) in appregistry.faces_list)
+        return any(face[0] == path for face in appregistry.faces_list)
 
     def _load_settings(self):
         """Apply the settings saved before the last restart, then start saving changes.
