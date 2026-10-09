@@ -122,23 +122,36 @@ disables the interrupt character with `micropython.kbd_intr(-1)` first, so a `0x
 payload is not read as Ctrl-C. This is the fast path and avoids the base64 overhead as well as
 the per-line round trip that makes `wasptool` slow.
 
+Before replying that it is ready, a raw `recv` discards input until it has been quiet for 100 ms.
+The REPL ends a line at its carriage return, so the line feed after the command is still waiting
+and would become the first byte of the file. The sender must not send data before the `rx` reply.
+Raw `recv` reads through a 64 byte buffer allocated before it replies, because a watch that has
+been running may have no free block the size of a window; the first install from the companion
+app, which does not reboot the watch, failed exactly there. Any failure swallows the rest of the
+file before the prompt returns, so none of it runs as REPL input, and a sender silent for ten
+seconds ends the transfer. The companion's command line tool has installed, enabled and removed
+a package on a PineTime this way, with no reboot first.
+
 **Base64** reads one encoded line per window instead. It needs no control-character handling and,
 more importantly, works on a firmware without `sys.stdin.buffer`. That attribute follows
 `MICROPY_PY_SYS_STDIO_BUFFER`, which defaults to the extra feature level while the nrf port sits
-at core features, so it is absent today. Base64 is therefore the only mode available before the
-firmware change, which is what makes the `/flash` prototype possible.
+below it, so the wasp-os boards enable it themselves. Base64 is the only mode on a firmware built
+before that, which is what made the `/flash` prototype possible.
 
 `abi()` reports which modes the watch offers, so the phone picks the fast one when it exists.
 
-Flow control is set by the buffer between the radio and Python, a fixed 128 byte array in
-`ble_uart.c`. The consumer stalls for tens of milliseconds during a littlefs write, so the phone
-must not run further ahead than the buffer holds.
+Flow control is set by the buffer between the radio and Python, a fixed array in `ble_uart.c`.
+The consumer stalls for tens of milliseconds during a littlefs write, and a full ring drops its
+oldest byte rather than holding the sender back, so the phone must not run further ahead than the
+buffer holds. `abi()` reports the window to use.
 
-| | Bytes |
-|---|---|
-| Receive ring today | 128 |
-| Safe window today | 96 |
-| Safe window after raising the ring to 1 KB | 512 |
+| | Receive ring | Window |
+|---|---|---|
+| Firmware with raw transfer | 1 KB | 512 bytes |
+| Older firmware | 128 bytes | 96 bytes |
+
+The ring used to overrun its array by one byte when full, onto the variable that holds the REPL
+mode. The same change that raised it to 1 KB fixed that.
 
 Integrity is already covered per packet by the BLE link layer. `recv` still returns a 32-bit
 additive sum so a truncated or duplicated window is caught.
@@ -170,7 +183,7 @@ when the class defines it, otherwise the app reads the file itself in `foregroun
 
 ## Firmware changes needed
 
-All of these land in one flash:
+The firmware carries all of these:
 
 - The package manager as a frozen module.
 - The lazy path in `wasp.system.register` and `switch`.
@@ -231,19 +244,46 @@ The working directory on the watch is `/flash`, so the manager's relative `pkg/`
       34 tests across `packages.test.ts` and `transfer.test.ts`.
 - [x] Decide where packages come from: bundled with the app, with a repository and a file picker
       left for later. See the section above.
-- [ ] A generator that turns `mkpkg.py` output into the app's bundled package module.
-- [ ] Installed list with enable toggles, install and uninstall flows.
-- [ ] Settings form generated from the `config` schema.
+- [x] A generator that turns `mkpkg.py` output into the app's bundled package module,
+      `scripts/import-packages.mjs`, run as `npm run import-packages`.
+- [x] Installed list with enable toggles, install and uninstall flows, on the Apps tab.
+- [x] Settings form generated from the `config` schema, `src/app/configure.tsx`.
+
+### Phase 4, firmware
+
+- [x] Lazy path in `register` and `switch`. An application named by its path is recorded as an
+      `AppEntry` and built only when something switches to it, then dropped again.
+- [x] Freeze the manager. It is required rather than merely nice: a booted watch has about 5.5 KB
+      of heap and importing the compiled manager from `/flash` needs roughly 4 KB. Start up
+      registers every enabled package from the index, and `pkg` on the REPL imports the manager
+      on first use.
+- [x] Faces app reads the index, so a watch face can be installed as a package.
+- [x] Receive ring in `ble_uart.c` raised from 128 bytes to 1 KB, which lifts the transfer window
+      from 96 bytes to 512.
+- [x] `MICROPY_PY_SYS_STDIO_BUFFER` enabled for the PineTime, P8 and K9, which puts
+      `sys.stdin.buffer` there and unlocks raw transfer.
+- [x] Run all of it on a watch. On a PineTime with nothing installed, 9.7 KB of heap is free after
+      boot, against 11.2 KB on the firmware before; 896 bytes of that is the larger ring. An app
+      package installed with `pkgpush.py` is listed by the launcher, opens and unloads completely.
+      A face package appears in the Faces app and runs as the watch face. 2 KB moves in 7.8 s raw
+      and 21 s as base64, both in 512 byte windows.
+
+Found on the watch, and fixed since:
+
+- [x] `mkpkg.py` packaged everything as an app unless a `pkg.toml` said otherwise. A source
+      directory under `faces/` now builds a face.
+- [x] The Flashlight and Faces apps carried a 96x64 colour `icon.png`. They use the shared torch
+      and clock icons, and `gen_app_icons.py` now copies those images to them.
+- [x] A package's label came from its directory name. `mkpkg.py` now reads the class's own
+      `NAME`, so the resistor clock lists as Resist and the flashlight as Torch.
+- [x] The companion app sent every file as base64. It now sends raw bytes when the watch offers
+      raw transfer, though no Bluetooth path in the app has reached the watch to try it.
+
+A package marked `resident` keeps its one instance once built, as a built-in application declaring
+`PERSIST` does. Nothing else needs pinning: an application referenced from elsewhere, by a pending
+alarm for instance, stays alive on that reference.
 
 ### Phase 5, later sources
 
 - [ ] A package repository: index format, hosting, updates, and whether packages are signed.
 - [ ] Installing a package `.zip` picked from the phone's files.
-
-### Phase 4, firmware
-
-- [ ] Freeze the manager.
-- [ ] Lazy path in `register` and `switch`, with the `resident` flag honoured.
-- [ ] Faces app reads the index.
-- [ ] Receive ring raised to 1 KB.
-- [ ] Mark the apps that need `resident` in their manifests: alarm, timer, step counter.
