@@ -13,32 +13,33 @@ class NotificationBar:
     """Show BT status and if there are pending notifications."""
     def __init__(self, x=0, y=0):
         self._pos = (x, y)
+        self._shown = None
 
     def draw(self):
-        """Redraw the notification widget.
-
-        For this simple widget :py:meth:`~.draw` is simply a synonym for
-        :py:meth:`~.update` because we unconditionally update from scratch.
-        """
+        """Redraw the notification widget from scratch."""
+        self._shown = None
         self.update()
 
     def update(self):
-        """Update the widget.
+        """Redraw the widget if the connection or notifications have changed."""
+        connected = wasp.watch.connected()
+        pending = bool(wasp.system.notifications)
+        shown = connected * 2 + pending
+        if shown == self._shown:
+            return
+        self._shown = shown
 
-        This widget does not implement lazy redraw internally since this
-        can often be implemented (with less state) by the container.
-        """
         draw = watch.drawable
         (x, y) = self._pos
 
-        if wasp.watch.connected():
+        if connected:
             draw.blit(icons.blestatus, x, y, fg=wasp.system.theme('ble'))
-            if wasp.system.notifications:
+            if pending:
                 draw.blit(icons.notification, x+22, y,
                           fg=wasp.system.theme('notify-icon'))
             else:
                 draw.fill(0, x+22, y, 30, 32)
-        elif wasp.system.notifications:
+        elif pending:
             draw.blit(icons.notification, x, y,
                       fg=wasp.system.theme('notify-icon'))
             draw.fill(0, x+30, y, 22, 32)
