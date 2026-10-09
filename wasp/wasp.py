@@ -893,10 +893,12 @@ class Manager():
                 state = self._button.get_event()
                 if None != state:
                     self._handle_button(state)
+                    update = True
 
                 event = watch.touch.get_event()
                 if event:
                     self._handle_touch(event)
+                    update = True
             finally:
                 self._dispatching = False
 
@@ -908,7 +910,9 @@ class Manager():
             if self.sleep_at and watch.rtc.uptime > self.sleep_at:
                 self.sleep()
 
-            gc.collect()
+            # Collect once a second, or after an event, rather than on every tick.
+            if update:
+                gc.collect()
         else:
             if 1 == self._button.get_event() or \
                     self._charging != watch.battery.charging():
