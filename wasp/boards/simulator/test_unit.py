@@ -55,7 +55,8 @@ def test_font_width(draw):
 
         assert 0 == draw.bounding_box('0000')[0] % 4
 
-        if f.max_ch() >= 90:
+        # Only sans24 has letters; the larger fonts are digits alone.
+        if f is fonts.sans24:
             assert draw.bounding_box('IIII')[0] < draw.bounding_box('WWWW')[0]
 
 @pytest.mark.parametrize("input,expected", (
