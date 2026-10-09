@@ -19,3 +19,4 @@ venv
 # Files the simulator test suite writes to the repo root.
 Morse.txt
 alarms.txt
+settings.json

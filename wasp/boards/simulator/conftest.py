@@ -5,6 +5,11 @@ import pytest
 import pprint
 import json
 
+import wasp
+
+# Keep the suite's settings in RAM, so a settings.json left in the repo root cannot change a test.
+wasp.system.settings_file = None
+
 def discover_app_constructors():
     apps = []
     appClasses = []
