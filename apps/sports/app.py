@@ -69,6 +69,14 @@ class SportsApp():
     def tick(self, ticks):
         self._update()
 
+    def save(self):
+        """Keep a running session for when the app is opened again."""
+        return (self._timer.save(), self._steps, self._last_steps)
+
+    def restore(self, saved):
+        (timer, self._steps, self._last_steps) = saved
+        self._timer.restore(timer)
+
     def _reset(self):
         self._timer.reset()
         self._steps = 0

@@ -80,16 +80,22 @@ any change in its lifecycle.
         GO_TO_CLOCK [ label="GOTO ClockApp" ];
     }
 
-When an application is initialized is enters the ``BACKGROUND`` state. A
-backgrounded application will not execute but it should nevertheless
-maintain its user visible state whilst deactivated. To conserve
-memory wasp-os does not permit two applications to run simultaneously but
-because each application remembers its state when it is not running then it
-will appear to the user as though all applications are running all the time.
+When an application is initialized it enters the ``BACKGROUND`` state. To
+conserve memory wasp-os builds an application only when it is opened and drops
+it again when it is left, so an application that is not active is usually not
+in memory at all. It should nevertheless appear to the user as though every
+application is running all the time.
 
-For example, a stopwatch application should record the time that it was started
-and remember that start time, regardless of whether it is running or not so
-that when it restarted is can continue to run as the user expects.
+An application keeps its user visible state across being left in one of two
+ways. Most implement :py:meth:`~.TemplateApp.save`, which returns the few
+values needed to carry on, and :py:meth:`~.TemplateApp.restore`, which takes
+them back when the application is next built. A stopwatch, for example, saves
+the time it was started rather than how long it has run, so it carries on
+counting while it is closed. An application that hands the scheduler a callback
+of its own, such as a timer counting down, must instead stay in memory by
+setting :py:data:`~.TemplateApp.PERSIST`, which may be a property that is true
+only while it is running. Saved values live in RAM, so they last until the
+watch restarts.
 
 A backgrounded application enters the ``ACTIVE`` state via a call to
 :py:meth:`~.TemplateApp.foreground`. When it is active the application owns the
