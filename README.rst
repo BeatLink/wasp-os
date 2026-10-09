@@ -197,7 +197,7 @@ Watch faces:
 
 Games:
 
-.. image:: res/screenshots/Play2048App.png
+.. image:: apps/play2048/screenshot.png
    :alt: Let's play the 2048 game (in the wasp-os simulator)
    :width: 179
 

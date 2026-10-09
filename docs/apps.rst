@@ -84,6 +84,8 @@ Applications
 Games
 -----
 
+.. automodule:: apps.play2048.app
+
 .. automodule:: apps.game_of_life.app
 
 .. automodule:: apps.puzzle15.app
