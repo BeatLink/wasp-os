@@ -116,7 +116,7 @@ class TemplateApp():
     def touch(self, event):
         """Notify the application of a touchscreen touch event."""
         draw = wasp.watch.drawable
-        wasp.watch.drawable.string('({}, {})'.format(
+        draw.string('({}, {})'.format(
                 event[1], event[2]), 0, 108, width=240)
 
     def _draw(self):

@@ -5,7 +5,6 @@
 # Copyright (c) 2020 Daniel Thompson
 # Copyright (c) 2016 Paul Sokolovsky
 
-import sys
 import os
 
 class LS:
@@ -59,7 +58,7 @@ def cat(f):
     head(f, 1 << 30)
 
 def download(path):
-    head(f, 1 << 30)
+    head(path, 1 << 30)
 
 def upload(path):
     print("upload mode; Ctrl-C to cancel, Ctrl-D to finish")

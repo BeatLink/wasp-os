@@ -133,12 +133,15 @@ ifeq ("$(origin K)", "command line")
   PYTEST_RESTRICT = -k '$(K)'
 endif
 
+lint:
+	ruff check .
+
 check: wasp/boards/manifest_user_apps.py
 	PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.:wasp/boards/simulator:wasp:wasp/apps/system \
 	$(PYTEST) -v -W ignore $(PYTEST_RESTRICT) wasp/boards/simulator
 
 
-.PHONY: bootloader reloader docs micropython
+.PHONY: bootloader reloader docs micropython lint
 
 dist: DIST=../wasp-os-$(VERSION)
 dist: k9

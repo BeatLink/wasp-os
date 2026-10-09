@@ -42,6 +42,7 @@
             pkgs.bluez
             pkgs.git
             pkgs.gnumake
+            pkgs.ruff
             pkgs.unzip
             pkgs.wget
           ];
@@ -58,6 +59,7 @@
             echo "  make BOARD=pinetime all   build bootloader, reloader and firmware"
             echo "  make sim                  run the simulator"
             echo "  make check                run the simulator test suite"
+            echo "  make lint                 check the Python with ruff"
             echo "  pytest tools/             run the packaging tool tests"
             echo
             echo "python  $(python3 --version)"

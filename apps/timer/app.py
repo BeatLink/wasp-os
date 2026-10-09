@@ -14,7 +14,6 @@ An application to set a vibration in a specified amount of time. Like a kitchen 
 
 import wasp
 import fonts
-import time
 import widgets
 import math
 from micropython import const

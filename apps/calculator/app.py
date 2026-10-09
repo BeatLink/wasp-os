@@ -10,7 +10,7 @@ compute the solution.
     :width: 179
 """
 
-import wasp, fonts
+import wasp
 
 # 1-bit RLE, 32x32, generated from apps/calculator/icon.png, 141 bytes
 calc = (

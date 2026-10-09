@@ -26,8 +26,6 @@ And to upload:
 """
 
 import wasp
-import icons
-from apps.system.pager import PagerApp
 
 class GalleryApp():
     NAME = 'Gallery'

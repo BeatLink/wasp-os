@@ -36,7 +36,6 @@ application is dedicated to Professor Conway.
 """
 
 import array
-import machine
 import micropython
 import wasp
 

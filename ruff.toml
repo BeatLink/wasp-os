@@ -1,0 +1,30 @@
+# Lint the fork's own Python with pyflakes' checks; vendored submodules are left as they are.
+target-version = "py311"
+extend-exclude = [
+    "bootloader",
+    "micropython",
+    "reloader",
+    "tools/intelhex",
+    "tools/micropython-font-to-py",
+    "tools/nrfutil",
+    "tools/ota-dfu",
+    "tools/pynus",
+    "wasp/apps/user",
+    "wasp/drivers/flash",
+    "wasp/modules/bma42x-upy",
+    "docs/build",
+]
+# MicroPython provides these without an import: viper pointer types, const, and freeze in manifests.
+builtins = ["const", "freeze", "ptr8", "ptr16", "ptr32"]
+
+[lint]
+select = ["F"]
+
+[lint.per-file-ignores]
+# A package's __init__ re-exports what its modules define.
+"**/__init__.py" = ["F401"]
+# main.py puts gadgetbridge's names on the REPL, which is what the star import is for.
+"**/main.py" = ["F403"]
+"docs/main/*.py" = ["F403"]
+# Importing watch is what starts the hardware.
+"wasp/boot.py" = ["F401"]

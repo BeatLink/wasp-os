@@ -18,9 +18,7 @@ There is a preview of the next letter at the bottom of the screen.
 """
 
 import wasp
-import icons
 import fonts
-from math import floor
 from micropython import const
 
 

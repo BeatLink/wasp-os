@@ -16,11 +16,7 @@ This application also (optionally) loads an icon from the filesystem allowing
 to be customized to match whether theme your verses are based around.
 """
 
-import wasp
-import icons
 
-import io
-import sys
 
 from apps.system.pager import PagerApp
 

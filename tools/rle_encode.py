@@ -4,7 +4,6 @@
 # Copyright (C) 2020 Daniel Thompson
 
 import argparse
-import sys
 import os.path
 from PIL import Image
 
@@ -272,6 +271,34 @@ def encode_8bit(im):
     encode_pixel(px, rl)
 
     return (im.width, im.height, bytes(rle))
+
+def decode_to_ascii(image):
+    (sx, sy, rle) = image
+    data = bytearray(2*sx)
+    dp = 0
+    black = ord('#')
+    white = ord(' ')
+    color = black
+
+    for rl in rle:
+        while rl:
+            data[dp] = color
+            data[dp+1] = color
+            dp += 2
+            rl -= 1
+
+            if dp >= (2*sx):
+                print(data.decode('utf-8'))
+                dp = 0
+
+        if color == black:
+            color = white
+        else:
+            color = black
+
+    # Check the image is the correct length
+    assert(dp == 0)
+
 
 def render_c(image, fname, indent, depth):
     extra_indent = ' ' * indent
