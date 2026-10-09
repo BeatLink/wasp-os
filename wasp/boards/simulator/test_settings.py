@@ -51,17 +51,17 @@ def test_setting_a_value_it_already_has_writes_nothing(system):
 
 def test_a_restart_brings_the_settings_back(system):
     (system, path) = system
-    (module, label) = appregistry.faces_list[-1]
+    (face, label) = appregistry.faces_list[-1]
     theme = bytes(range(len(system._theme)))
     path.write_text(json.dumps({
         'brightness': 3, 'notify_level': 1, 'units': 'Imperial',
-        'theme': list(theme), 'face': ['{}.{}App'.format(module, label), label]}))
+        'theme': list(theme), 'face': [face, label]}))
 
     manager = restart(path)
 
     assert (manager.brightness, manager.notify_level, manager.units) == (3, 1, 'Imperial')
     assert bytes(manager._theme) == theme
-    assert manager.quick_ring[0].path == '{}.{}App'.format(module, label)
+    assert manager.quick_ring[0].path == face
 
 
 def test_a_face_that_no_longer_exists_is_ignored(system):

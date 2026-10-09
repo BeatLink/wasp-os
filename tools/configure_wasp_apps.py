@@ -80,12 +80,12 @@ with open(sys.argv[1:][0], 'rb') as config_file:
             reg_file.write('    (\'' + app_module_name + '\', \'' + app_display_name + '\'),\n')
     reg_file.write(')\n\n')
 
-    # Software to display in the faces app
+    # Software to display in the faces app, as the path to its class and the name it shows
     reg_file.write('faces_list = (\n')
     for face in config.get('watchface'):
-        watchface_module = 'apps.user.' + _module_name(face.get('file'))
-        watchface_class = _display_name(face.get('file'))
-        reg_file.write('    (\'' + watchface_module + '\',\'' + watchface_class + '\'),\n')
+        watchface_path = 'apps.user.' + _module_name(face.get('file')) + '.' + _class_name(face.get('file'))
+        watchface_name = _display_name(face.get('file'))
+        reg_file.write('    (\'' + watchface_path + '\', \'' + watchface_name + '\'),\n')
     reg_file.write(')\n\n')
 
 
