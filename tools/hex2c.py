@@ -38,7 +38,7 @@ def generate_c(ihex):
             print(f' 0x{ihex[j]:02x},', end='')
 
         print('\n};\n')
-    print(f'const struct segment segments[] = {{')
+    print('const struct segment segments[] = {')
     for i, segment in enumerate(segments):
         sg = ihex.tobinarray(start=segment[0], end=segment[1]-1)
         crc = binascii.crc32(sg)

@@ -1,7 +1,4 @@
-import pytest
-import wasp
 import importlib
-import os
 from PIL import Image
 
 EXCLUDE = ('NotificationApp', 'PagerApp', 'TemplateApp', 'FacesApp', 'ReadMeApp')
@@ -73,8 +70,6 @@ def test_app_library(constructor):
 
     with open('docs/apps.rst') as f:
         appdoc = f.read()
-    with open('docs/wasp.rst') as f:
-        waspdoc = f.read()
 
     # Every application must be listed in the Application Library
     needle = f'.. automodule:: {constructor.__module__}'
@@ -98,7 +93,6 @@ def test_docstrings(constructor):
 
     fname = _screenshot(constructor)
 
-    class_doc = constructor.__doc__
     module_doc = importlib.import_module(constructor.__module__).__doc__
 
     # Screenshots should *not* be included in the constructor doc

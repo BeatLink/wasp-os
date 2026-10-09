@@ -117,7 +117,6 @@ class StopwatchApp():
             t = '# {}   {:02}:{:02}.{:02}'.format(n, minutes, secs, centisecs)
             n -= 1
 
-            w = fonts.width(fonts.sans24, t)
             draw.string(t, 0, y + (i*24), 240)
 
     def _draw(self):

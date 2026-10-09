@@ -33,7 +33,7 @@ snake_icon = (
     b'\t\t\t\x04\x0c\x05\x08'
 )
 
-import wasp, time
+import wasp
 from random import randint
 
 class SnakeApp():
