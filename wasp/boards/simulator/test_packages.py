@@ -99,7 +99,12 @@ def test_a_resident_package_keeps_its_instance(flash, system):
     system.register_packages()
     (entry,) = listed(system, 'Cherry')
 
-    assert entry.load() is entry.load()
+    system.switch(entry)
+    first = system.app
+    system.switch(system.quick_ring[0])
+    system.switch(entry)
+
+    assert system.app is first
 
 
 def test_disabled_packages_and_faces_stay_off_the_launcher(flash, system):

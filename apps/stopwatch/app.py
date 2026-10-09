@@ -82,6 +82,14 @@ class StopwatchApp():
     def tick(self, ticks):
         self._update()
 
+    def save(self):
+        """Keep the count and the splits for when the app is opened again."""
+        return (self._timer.save(), self._splits, self._nsplits)
+
+    def restore(self, saved):
+        (timer, self._splits, self._nsplits) = saved
+        self._timer.restore(timer)
+
     def _reset(self):
         self._timer.reset()
         self._splits = []

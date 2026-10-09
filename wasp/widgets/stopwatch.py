@@ -25,6 +25,14 @@ class Stopwatch:
     def started(self):
         return bool(self._started_at)
 
+    def save(self):
+        """Return the values restore needs to carry on, running or not."""
+        return (self.count, self._started_at)
+
+    def restore(self, saved):
+        (self.count, self._started_at) = saved
+        self._last_count = -1
+
     def reset(self):
         self.count = 0
         self._started_at = 0

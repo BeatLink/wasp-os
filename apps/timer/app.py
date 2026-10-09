@@ -41,6 +41,11 @@ class TimerApp():
     """Allows the user to set a vibration alarm.
     """
     NAME = 'Timer'
+
+    @property
+    def PERSIST(self):
+        """Stay resident while counting, because the alarm callback holds this instance."""
+        return self.state == _RUNNING
     ICON = icon
 
     def __init__(self):

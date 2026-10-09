@@ -38,6 +38,13 @@ class CalculatorApp():
     def __init__(self):
         self.output = ""
 
+    def save(self):
+        """Keep what has been typed for when the app is opened again."""
+        return self.output
+
+    def restore(self, saved):
+        self.output = saved
+
     def foreground(self):
         self._draw()
         self._update()
