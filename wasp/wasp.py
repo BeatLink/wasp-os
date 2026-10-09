@@ -15,6 +15,7 @@
     shortcut (and to reduce memory by keeping it out of other namespaces).
 """
 import gc
+import json
 import machine
 import micropython
 import sys
@@ -201,6 +202,9 @@ class Manager():
     which can be accessed via :py:data:`wasp.system` .
     """
 
+    # Where settings are kept across a restart, relative to /flash; None keeps them in RAM.
+    settings_file = 'settings.json'
+
     def __init__(self):
         self.app = None
         self.app_entry = None
@@ -224,7 +228,9 @@ class Manager():
         self.musicstate = {}
         self.musicinfo = {}
         self.weatherinfo = {}
-        self.units = "Metric"
+        self._units = "Metric"
+        # The settings as last written, or None until start up has read them back.
+        self._settings_text = None
 
         self._theme = (
                 b'\x7b\xef'     # ble
@@ -263,6 +269,7 @@ class Manager():
             if not self.quick_ring:
                 self.register_defaults()
             self.register_packages()
+            self._load_settings()
 
             # System start up...
             watch.display.poweron()
@@ -287,6 +294,73 @@ class Manager():
                       name='Settings')
         self.register('apps.system.software.SoftwareApp', no_except=True,
                       name='Software')
+
+    def _settings(self):
+        """Return the settings worth keeping across a restart, as JSON text."""
+        face = self.quick_ring[0] if self.quick_ring else None
+        return json.dumps({
+            'brightness': self._brightness,
+            'notify_level': self._notifylevel,
+            'units': self._units,
+            'theme': list(self._theme),
+            'face': [face.path, face.NAME] if isinstance(face, AppEntry) else None,
+        })
+
+    def _save_settings(self):
+        """Write the settings to the flash, but only if they changed since the last write."""
+        if self._settings_text is None or not self.settings_file:
+            return
+        try:
+            text = self._settings()
+            if text != self._settings_text:
+                with open(self.settings_file, 'w') as f:
+                    f.write(text)
+                self._settings_text = text
+        except Exception as e:
+            # Losing a setting is better than failing whatever changed it.
+            sys.print_exception(e)
+
+    def _face_exists(self, path):
+        """Tell whether a watch face saved before a restart can still be built."""
+        if path.startswith('pkg.'):
+            name = path.split('.')[1]
+            return any(face['name'] == name for face in packages('face'))
+        return any('{}.{}App'.format(module, label) == path
+                   for (module, label) in appregistry.faces_list)
+
+    def _load_settings(self):
+        """Apply the settings saved before the last restart, then start saving changes.
+
+        Each value is checked before it is used, so a damaged file or a watch
+        face that has since been removed leaves the default in place.
+        """
+        try:
+            with open(self.settings_file) as f:
+                saved = json.load(f)
+            value = saved.get('brightness')
+            if value in (1, 2, 3):
+                self._brightness = value
+            value = saved.get('notify_level')
+            if value in (1, 2, 3):
+                self._notifylevel = value
+                self._nfylev_ms = self._nfylevels[value - 1]
+            value = saved.get('units')
+            if value in ('Metric', 'Imperial'):
+                self._units = value
+            value = saved.get('theme')
+            if value and len(value) == len(self._theme):
+                self._theme = bytes(value)
+            value = saved.get('face')
+            if value and self._face_exists(value[0]):
+                self.register(value[0], watch_face=True, name=value[1])
+        except Exception:
+            # A missing or damaged file leaves the defaults in place.
+            pass
+        try:
+            self._settings_text = self._settings()
+        except Exception as e:
+            # Start up must finish even if the settings cannot be written out.
+            sys.print_exception(e)
 
     def register_packages(self):
         """Register the enabled applications installed as packages.
@@ -345,6 +419,7 @@ class Manager():
 
         if watch_face:
             self.quick_ring[0] = app
+            self._save_settings()
         elif quick_ring:
             self.quick_ring.append(app)
         else:
@@ -362,6 +437,16 @@ class Manager():
                 break
 
     @property
+    def units(self):
+        """The units the user prefers, 'Metric' or 'Imperial'."""
+        return self._units
+
+    @units.setter
+    def units(self, value):
+        self._units = value
+        self._save_settings()
+
+    @property
     def brightness(self):
         """Cached copy of the brightness current written to the hardware."""
         return self._brightness
@@ -370,6 +455,7 @@ class Manager():
     def brightness(self, value):
         self._brightness = value
         watch.backlight.set(self._brightness)
+        self._save_settings()
 
     @property
     def notify_level(self):
@@ -380,6 +466,7 @@ class Manager():
     def notify_level(self, value):
         self._notifylevel = value
         self._nfylev_ms = self._nfylevels[self._notifylevel - 1]
+        self._save_settings()
 
     @property
     def notify_duration(self):
@@ -873,6 +960,7 @@ class Manager():
         if len(self._theme) != len(new_theme):
             return False
         self._theme = new_theme
+        self._save_settings()
         return True
 
     def theme(self, theme_part: str) -> int:
