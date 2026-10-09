@@ -161,11 +161,14 @@ def test_settings(system):
 
     assert(start_point == system.app._current_setting)
 
-def test_the_alarm_app_is_reused_rather_than_rebuilt(system):
-    from apps.user.alarm import AlarmApp
-    # The app leaves a bound method with the scheduler, so a second instance
-    # would keep the first one alive.
-    assert AlarmApp.PERSIST
+def test_the_scheduler_never_holds_the_alarm_app(system):
+    entry = system.apps['Alarm']
+    system.switch(entry)
+    app = system.app
+    system.switch(system.quick_ring[0])
+    # Anything the app scheduled names its entry, so nothing keeps the app in memory.
+    assert all(action is not app and getattr(action, '__self__', None) is not app
+               for (_, action) in system._alarms)
 
 def test_registering_the_step_counter_starts_the_sensor(system):
     """The app resets the accelerometer, but it is not built until opened."""
