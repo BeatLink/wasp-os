@@ -14,8 +14,6 @@
 
 import wasp
 
-import icons
-import time
 import fonts.sans36
 
 # 1-bit RLE, 32x32, generated from apps/weather/icon.png, 99 bytes

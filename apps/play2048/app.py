@@ -13,7 +13,6 @@ number 2048.
 """
 
 import wasp
-import icons
 import widgets
 import random
 import fonts

@@ -24,7 +24,6 @@ conferences and shows.
 """
 
 import wasp
-import icons
 
 # 1-bit RLE, 32x32, generated from apps/demo/icon.png, 133 bytes
 demo_icon = (
@@ -128,7 +127,7 @@ pine64 = (
     b's'
 )
 
-class Hack:
+class Hack:  # noqa: F811
     pass
 
 # 1-bit RLE, generated from res/micropython.png, 1491 bytes

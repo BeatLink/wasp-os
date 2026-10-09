@@ -16,8 +16,6 @@ the watch's battery will last for many days.
 """
 
 import wasp
-import machine
-from micropython import const
 
 class BeaconApp():
     NAME = "Beacon"

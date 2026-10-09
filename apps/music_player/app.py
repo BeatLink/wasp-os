@@ -20,7 +20,6 @@ Music Player Controller:
 import wasp
 
 import icons
-import time
 
 from micropython import const
 from gadgetbridge import send_cmd

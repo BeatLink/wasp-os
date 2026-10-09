@@ -15,7 +15,7 @@ import json
 import os
 import time
 
-from nus import Nus, connect, reboot
+from nus import connect, reboot
 
 # Bytes per encoded line. The manager reports its own figure through abi(), and
 # this is the value for an unmodified receive ring.

@@ -139,7 +139,7 @@ class TestApp():
         wasp.system.set_alarm(now + 30, self._alarm)
         wasp.system.set_alarm(now + 30, nop)
         if not wasp.system.cancel_alarm(now + 30, nop):
-            bug()
+            raise AssertionError('cancel_alarm did not find the alarm')
         wasp.watch.drawable.string("Done.", 12, 24+80)
 
     def _benchmark_rle(self):
