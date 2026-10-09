@@ -99,7 +99,7 @@ def _peek(path, attribute):
         return eval(path + '.' + attribute, namespace)
     finally:
         del namespace
-        del sys.modules[modname]
+        _unload(modname)
         gc.collect()
 
 
@@ -113,7 +113,7 @@ def _load(path):
         return eval(path + '()', namespace)
     finally:
         del namespace
-        del sys.modules[modname]
+        _unload(modname)
         gc.collect()
 
 def _alarm_set():
@@ -129,6 +129,59 @@ def _alarm_set():
     except (OSError, ValueError):
         pass
     return False
+
+
+def _unload(modname):
+    """Forget a module, and the package levels above an installed one."""
+    del sys.modules[modname]
+    if modname.startswith('pkg.'):
+        # Importing pkg.NAME.app also loads pkg and pkg.NAME, which would stay.
+        sys.modules.pop(modname[:modname.rindex('.')], None)
+        sys.modules.pop('pkg', None)
+
+
+def _pkgmgr(call, *args):
+    """Make one call into the package manager without keeping it loaded."""
+    loaded = 'pkgmgr' in sys.modules
+    import pkgmgr
+    try:
+        return getattr(pkgmgr, call)(*args)
+    finally:
+        if not loaded:
+            del sys.modules['pkgmgr']
+
+
+def packages(kind='app'):
+    """Return the index entries of the enabled packages of one kind."""
+    return _pkgmgr('enabled', kind)
+
+
+class PackageEntry(AppEntry):
+    """An application installed as a package on the external flash.
+
+    Its icon is a file beside its code, so the launcher draws it without
+    importing anything. A package marked resident keeps its one instance once
+    built, as an application declaring PERSIST does.
+    """
+
+    def __init__(self, entry):
+        name = entry['name']
+        super().__init__('pkg.{}.app.{}'.format(name, entry['cls']),
+                         entry.get('label', name))
+        self.package = name
+        self.resident = entry.get('resident', False)
+
+    @property
+    def ICON(self):
+        if self._icon is None:
+            self._icon = _pkgmgr('icon_of', self.package) or False
+        return self._icon if self._icon else None
+
+    def load(self):
+        app = super().load()
+        if self.resident:
+            self._app = app
+        return app
 
 
 def _key_alarm(d):
@@ -207,6 +260,7 @@ class Manager():
             # Register default apps if main hasn't put anything on the quick ring
             if not self.quick_ring:
                 self.register_defaults()
+            self.register_packages()
 
             # System start up...
             watch.display.poweron()
@@ -231,6 +285,19 @@ class Manager():
                       name='Settings')
         self.register('apps.system.software.SoftwareApp', no_except=True,
                       name='Software')
+
+    def register_packages(self):
+        """Register the enabled applications installed as packages.
+
+        A damaged index or package must not stop the watch starting, so a
+        failure is reported and the packages are skipped.
+        """
+        try:
+            for entry in packages('app'):
+                self.register(PackageEntry(entry),
+                              quick_ring=entry.get('quick_ring', False))
+        except Exception as e:
+            sys.print_exception(e)
 
     def register(self, app, quick_ring=False, watch_face=False, no_except=False,
                  name=None):
