@@ -154,3 +154,14 @@ def test_the_repl_reaches_the_manager_by_name():
     assert gadgetbridge.pkg.abi() == expected
     assert 'pkgmgr' not in sys.modules
 
+
+def test_every_face_the_faces_app_offers_can_be_built(system):
+    import importlib
+    faces = FacesApp()
+    faces.foreground()
+    paths = [path for (path, label) in faces.choices]
+    faces.background()
+
+    for path in paths:
+        (module, cls) = path.rsplit('.', 1)
+        assert hasattr(importlib.import_module(module), cls), path

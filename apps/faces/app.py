@@ -24,8 +24,8 @@ class FacesApp():
     def foreground(self):
         """Activate the application."""
         choices = []
-        for (module, label) in appregistry.faces_list:
-            choices.append(('{}.{}App'.format(module, label), label))
+        for face in appregistry.faces_list:
+            choices.append(face)
         for face in wasp.packages('face'):
             choices.append(('pkg.{}.app.{}'.format(face['name'], face['cls']),
                             face.get('label', face['name'])))
