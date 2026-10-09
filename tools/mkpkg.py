@@ -10,6 +10,7 @@ docs/app-packaging-design.md for the format.
 """
 
 import argparse
+import ast
 import importlib.util
 import json
 import os
@@ -99,23 +100,51 @@ def read_abi(mpy_path):
     return {'mpy': version, 'arch': arch}
 
 
+def read_name(source_dir, cls):
+    """Return the NAME an app's class gives itself, or None if it sets none."""
+    try:
+        with open(os.path.join(source_dir, 'app.py')) as f:
+            tree = ast.parse(f.read())
+    except (OSError, SyntaxError):
+        return None
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == cls:
+            for item in node.body:
+                if (isinstance(item, ast.Assign) and len(item.targets) == 1
+                        and isinstance(item.targets[0], ast.Name)
+                        and item.targets[0].id == 'NAME'
+                        and isinstance(item.value, ast.Constant)
+                        and isinstance(item.value.value, str)):
+                    return item.value.value
+    return None
+
+
 def read_options(source_dir, name):
-    """Read apps/NAME/pkg.toml, falling back to the naming conventions."""
+    """Read NAME/pkg.toml, falling back to the app's own NAME and the conventions.
+
+    A source directory under faces/ builds a watch face, and any other an app.
+    """
+    parent = os.path.basename(os.path.dirname(os.path.abspath(source_dir)))
     options = {
         'name': name,
         'cls': snake_to_pascal(name) + 'App',
         'label': snake_to_pascal(name),
         'version': '0.1.0',
-        'kind': 'app',
+        'kind': 'face' if parent == 'faces' else 'app',
         'resident': False,
         'quick_ring': False,
         'config': [],
     }
 
+    declared = {}
     path = os.path.join(source_dir, 'pkg.toml')
     if os.path.exists(path):
         with open(path, 'rb') as f:
-            options.update(tomllib.load(f))
+            declared = tomllib.load(f)
+    options.update(declared)
+
+    if 'label' not in declared:
+        options['label'] = read_name(source_dir, options['cls']) or options['label']
 
     if options['kind'] not in ('app', 'face'):
         raise SystemExit(f"{name}: kind must be 'app' or 'face'")
