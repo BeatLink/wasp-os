@@ -17,6 +17,7 @@
 
         # Everything the simulator, the tests and the packaging tools import.
         python = pkgs.python3.withPackages (ps: with ps; [
+          cbor
           click
           cryptography
           intelhex
