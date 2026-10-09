@@ -82,6 +82,35 @@ def test_read_options_from_pkg_toml(tmp_path):
     assert options['cls'] == 'MusicPlayerApp'
 
 
+def test_read_options_takes_the_label_from_the_class_name(tmp_path):
+    (tmp_path / 'app.py').write_text(
+        'class Helper():\n    NAME = "Wrong"\n\n'
+        'class MusicPlayerApp():\n    NAME = "Music"\n')
+    assert mkpkg.read_options(str(tmp_path), 'music_player')['label'] == 'Music'
+
+
+def test_read_options_prefers_a_declared_label_to_the_class_name(tmp_path):
+    (tmp_path / 'app.py').write_text('class MusicPlayerApp():\n    NAME = "Music"\n')
+    (tmp_path / 'pkg.toml').write_text('label = "Tunes"\n')
+    assert mkpkg.read_options(str(tmp_path), 'music_player')['label'] == 'Tunes'
+
+
+def test_read_options_builds_a_face_from_the_faces_directory(tmp_path):
+    face = tmp_path / 'faces' / 'word_clock'
+    app = tmp_path / 'apps' / 'word_clock'
+    face.mkdir(parents=True)
+    app.mkdir(parents=True)
+    assert mkpkg.read_options(str(face), 'word_clock')['kind'] == 'face'
+    assert mkpkg.read_options(str(app), 'word_clock')['kind'] == 'app'
+
+
+def test_read_options_for_apps_in_the_tree():
+    stopwatch = mkpkg.read_options(os.path.join(ROOT_DIR, 'apps', 'stopwatch'), 'stopwatch')
+    resistor = mkpkg.read_options(os.path.join(ROOT_DIR, 'faces', 'resistor_clock'), 'resistor_clock')
+    assert (stopwatch['label'], stopwatch['kind']) == ('Stopclock', 'app')
+    assert (resistor['label'], resistor['kind']) == ('Resist', 'face')
+
+
 def test_read_options_rejects_bad_kind(tmp_path):
     (tmp_path / 'pkg.toml').write_text('kind = "widget"\n')
     with pytest.raises(SystemExit):
