@@ -51,6 +51,7 @@ ICONS = (
     ('apps/morse/app.py', 'ICON', 'apps/morse/icon.png', 'tower-cell'),
     ('apps/music_player/app.py', 'icon', 'apps/music_player/icon.png', 'music'),
     ('apps/phone_finder/app.py', 'icon', 'apps/phone_finder/icon.png', 'mobile-screen-button'),
+    ('apps/play2048/app.py', 'icon', 'apps/play2048/icon.png', 'table-cells-large'),
     ('apps/pomodoro/app.py', 'icon', 'apps/pomodoro/icon.png', 'hourglass-half'),
     ('apps/puzzle15/app.py', 'icon', 'apps/puzzle15/icon.png', 'puzzle-piece'),
     ('apps/read_me/app.py', 'icon', 'apps/read_me/icon.png', 'book-open'),
