@@ -142,10 +142,6 @@ class AlarmApp:
     """Allows the user to set a vibration alarm.
     """
     NAME = 'Alarm'
-    # This app leaves a callback with the scheduler so its alarms still go
-    # off while it is closed, which keeps it in memory whatever the system
-    # does. Say so, and be reused rather than built a second time.
-    PERSIST = True
     ICON = icon
 
     def __init__(self):
@@ -158,6 +154,8 @@ class AlarmApp:
         self.draft = False
         self.alarms = tuple([bytearray(3) for _ in range(_MAX_ALARMS)])
         self.pending_alarms = array.array('d', [0.0] * _MAX_ALARMS)
+        # The scheduler holds the app's entry where it can, so a pending alarm keeps nothing in memory.
+        self._wake = wasp.system.entry_for(self) or self._alert
 
         self.num_alarms = 0
         try:
@@ -624,6 +622,12 @@ class AlarmApp:
 
     # Alarm scheduling
 
+    def alarm(self):
+        """Ring, once a pending alarm has brought the app to the foreground."""
+        self.page = _RINGING_PAGE
+        wasp.system.wake()
+        self._draw()
+
     def _alert(self):
         self.page = _RINGING_PAGE
         wasp.system.wake()
@@ -632,7 +636,7 @@ class AlarmApp:
     def _snooze(self):
         now = wasp.watch.rtc.get_localtime()
         alarm = (now[0], now[1], now[2], now[3], now[4] + 10, now[5], 0, 0, 0)
-        wasp.system.set_alarm(time.mktime(alarm), self._alert)
+        wasp.system.set_alarm(time.mktime(alarm), self._wake)
         wasp.system.navigate(wasp.EventType.HOME)
 
     def _set_pending_alarms(self):
@@ -661,7 +665,7 @@ class AlarmApp:
                             break
 
                 self.pending_alarms[index] = pending_time
-                wasp.system.set_alarm(pending_time, self._alert)
+                wasp.system.set_alarm(pending_time, self._wake)
             else:
                 self.pending_alarms[index] = 0.0
 
@@ -671,7 +675,7 @@ class AlarmApp:
         for index, alarm in enumerate(self.alarms):
             pending_alarm = self.pending_alarms[index]
             if not pending_alarm == 0.0:
-                wasp.system.cancel_alarm(pending_alarm, self._alert)
+                wasp.system.cancel_alarm(pending_alarm, self._wake)
                 # If this is a one time alarm and in the past disable it
                 if alarm[_ENABLED_IDX] & ~_IS_ACTIVE == 0 and pending_alarm <= now:
                     alarm[_ENABLED_IDX] = 0

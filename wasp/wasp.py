@@ -85,6 +85,20 @@ class AppEntry():
             restore(state)
         return app
 
+    def __call__(self):
+        """Wake the application for a pending alarm, building it first if it is not loaded.
+
+        An application that queues its entry with the scheduler, rather than a
+        bound method of its own, does not have to stay in memory to be woken.
+        Its alarm method is called once it is in the foreground.
+        """
+        system.switch(self)
+        # A switch asked for from inside an application's handler happens later, so check it did.
+        if system.app_entry is self:
+            alarm = getattr(system.app, 'alarm', None)
+            if alarm:
+                alarm()
+
 
 def _import(path):
     """Import the module holding path and return its namespace.
@@ -141,11 +155,21 @@ def _alarm_set():
 
 
 def _unload(modname):
-    """Forget a module, and the package levels above an installed one."""
+    """Forget a module, everywhere its import left a reference to it.
+
+    Importing a.b.c also stores c as an attribute of a.b, which keeps the
+    module alive after it has left sys.modules. Installed packages leave
+    their pkg and pkg.NAME levels behind as well.
+    """
     del sys.modules[modname]
+    dot = modname.rfind('.')
+    if dot > 0:
+        parent = sys.modules.get(modname[:dot])
+        leaf = modname[dot + 1:]
+        if parent is not None and hasattr(parent, leaf):
+            delattr(parent, leaf)
     if modname.startswith('pkg.'):
-        # Importing pkg.NAME.app also loads pkg and pkg.NAME, which would stay.
-        sys.modules.pop(modname[:modname.rindex('.')], None)
+        sys.modules.pop(modname[:dot], None)
         sys.modules.pop('pkg', None)
 
 
@@ -408,12 +432,6 @@ class Manager():
                 except:
                     pass
             app = AppEntry(app, name, no_except)
-            if app.path.endswith('.AlarmApp') and _alarm_set():
-                # Saved alarms are scheduled as the app is built, so build it now if one is on.
-                try:
-                    app._app = app.load()
-                except Exception as e:
-                    sys.print_exception(e)
         elif type(app).__name__ == 'StepCounterApp':
             self.steps = steplogger.StepLogger(self)
 
@@ -425,6 +443,14 @@ class Manager():
         else:
             self.launcher_ring.append(app)
             self.launcher_ring.sort(key = _key_app)
+
+        # Saved alarms are scheduled as the app is built, so build it once now if one is on;
+        # its entry is in a ring by now, which is what the app hands the scheduler.
+        if isinstance(app, AppEntry) and app.path.endswith('.AlarmApp') and _alarm_set():
+            try:
+                app.load()
+            except Exception as e:
+                sys.print_exception(e)
 
     def unregister(self, cls):
         """Remove an application from the launcher.
@@ -708,8 +734,20 @@ class Manager():
         :param int time: Time to trigger the alarm (use time.mktime)
         :param function action: Action to perform when the alarm expires.
         """
-        self._alarms.append((time, action))
-        self._alarms.sort(key=_key_alarm)
+        alarm = (time, action)
+        # An application built again schedules its alarms again, so a repeat is dropped.
+        if alarm not in self._alarms:
+            self._alarms.append(alarm)
+            self._alarms.sort(key=_key_alarm)
+
+    def entry_for(self, app):
+        """Find the entry an application was registered under, by its class name, or None."""
+        name = '.' + type(app).__name__
+        for ring in (self.quick_ring, self.launcher_ring):
+            for entry in ring:
+                if isinstance(entry, AppEntry) and entry.path.endswith(name):
+                    return entry
+        return None
 
     def cancel_alarm(self, time, action):
         """Unqueue an alarm."""

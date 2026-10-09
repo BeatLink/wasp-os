@@ -91,3 +91,13 @@ def test_the_calculator_keeps_what_was_typed(system):
     system.switch(entry)
 
     assert system.app.output == '12+3'
+
+
+def test_a_closed_app_leaves_no_module_behind(system):
+    import sys
+    system.open_app('Timer')
+    home(system)
+
+    package = sys.modules.get('apps.user')
+    assert 'apps.user.timer' not in sys.modules
+    assert package is None or not hasattr(package, 'timer')
