@@ -46,6 +46,11 @@ _TIME_MODE = const(1)  # if 0: duration of vibration will be discounted
 class PomodoroApp():
     """Allows the user to set a periodic vibration alarm, Pomodoro style."""
     NAME = 'Pomodoro'
+
+    @property
+    def PERSIST(self):
+        """Stay resident while running, because the alarm callback holds this instance."""
+        return self.state != _STOPPED
     ICON = icon
 
     def __init__(self):

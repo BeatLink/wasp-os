@@ -35,6 +35,14 @@ class TemplateApp():
        so supplying an icon is strongly recommended. The icon, when provided,
        must not be larger than 96x64.
 
+    .. data:: PERSIST = False
+
+       An application is dropped from memory when it is left and built
+       again when it is next opened. One that hands the scheduler a callback
+       of its own, such as a timer that is counting down, sets ``PERSIST`` to
+       keep its one instance instead. It may be a property, true only while
+       something is running.
+
     """
     NAME = 'Template'
     ICON = icons.app
@@ -53,6 +61,19 @@ class TemplateApp():
 
     def background(self):
         """De-activate the application."""
+        pass
+
+    def save(self):
+        """Return the values to keep while the application is not loaded.
+
+        Called as the application is left and dropped. Keep raw values, such
+        as when something started rather than how long it has run, so that
+        restore can carry on from them.
+        """
+        return None
+
+    def restore(self, saved):
+        """Take back what save returned, before foreground is called."""
         pass
 
     def sleep(self):

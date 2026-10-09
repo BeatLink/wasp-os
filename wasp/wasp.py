@@ -39,17 +39,23 @@ class AppEntry():
     costs a name and a path until the moment it is opened. Its icon is read
     the first time the launcher asks for it and then kept, which is free:
     frozen images live in flash and only the reference is in RAM.
+
+    What survives an application being left is decided as it is left, see
+    :py:meth:`Manager._background`: either the whole instance, or the few
+    values its save method hands back.
     """
-    __slots__ = ('path', 'NAME', 'no_except', '_icon', '_app')
+    __slots__ = ('path', 'NAME', 'no_except', '_icon', '_app', 'state', 'resident')
 
     def __init__(self, path, name, no_except=False):
         self.path = path
         self.NAME = name
         self.no_except = no_except
         self._icon = None
-        # Set for an application that outlives being closed, so that opening
-        # it again reuses what is already there.
+        # The instance kept while the application asked to outlive being left.
         self._app = None
+        # What the application's save method returned, for restore to take back.
+        self.state = None
+        self.resident = False
 
     @property
     def ICON(self):
@@ -61,19 +67,21 @@ class AppEntry():
         return self._icon if self._icon else None
 
     def load(self):
-        """Import the module, build the application and drop the module.
+        """Return the kept instance, or build the application and restore its state.
 
-        An application that asked to be kept is built once and handed back
-        every time after that. The alarm app is one: it leaves a callback
-        with the scheduler so that its alarms still go off while it is
-        closed, and that callback holds the application anyway. Building a
-        second one would leave two in memory, each with its own alarms.
+        An instance is kept when the application was left asking to persist,
+        such as a timer that is counting: its callback is still with the
+        scheduler, and building a second one would show a stopped timer while
+        the first one rings.
         """
         if self._app:
             return self._app
         app = _load(self.path)
-        if getattr(app, 'PERSIST', False):
-            self._app = app
+        state = self.state
+        self.state = None
+        restore = getattr(app, 'restore', None)
+        if state is not None and restore:
+            restore(state)
         return app
 
 
@@ -176,12 +184,6 @@ class PackageEntry(AppEntry):
         if self._icon is None:
             self._icon = _pkgmgr('icon_of', self.package) or False
         return self._icon if self._icon else None
-
-    def load(self):
-        app = super().load()
-        if self.resident:
-            self._app = app
-        return app
 
 
 def _key_alarm(d):
@@ -384,10 +386,18 @@ class Manager():
         """Cached copy of the current vibrator pulse duration in milliseconds"""
         return self._nfylev_ms
 
-    def _retire(self):
-        """Background the foreground application and let go of it."""
+    def _background(self):
+        """Background the foreground application and keep what should outlive it.
+
+        An application whose PERSIST is true as it is left keeps its one
+        instance on its entry; PERSIST may be a property, true only while
+        there is something running. Any other application is dropped, and if
+        it has a save method the values that returns are kept for restore.
+        """
         app = self.app
-        if app and 'background' in dir(app):
+        if not app:
+            return
+        if 'background' in dir(app):
             try:
                 app.background()
             except:
@@ -395,6 +405,27 @@ class Manager():
                 # handler does not run the start up path again.
                 self.app = True
                 raise
+        entry = self.app_entry
+        if entry:
+            if entry.resident or getattr(app, 'PERSIST', False):
+                entry._app = app
+            else:
+                entry._app = None
+                save = getattr(app, 'save', None)
+                if save:
+                    entry.state = save()
+
+    def _entry_of(self, app):
+        """Find the entry keeping app, so an application switching to itself is still tracked."""
+        for ring in (self.quick_ring, self.launcher_ring):
+            for entry in ring:
+                if isinstance(entry, AppEntry) and entry._app is app:
+                    return entry
+        return None
+
+    def _retire(self):
+        """Background the foreground application and let go of it."""
+        self._background()
         self.app = None
         self.app_entry = None
         gc.collect()
@@ -407,7 +438,7 @@ class Manager():
                     nothing to switch to
         """
         if not isinstance(app, AppEntry):
-            return (app, None)
+            return (app, self._entry_of(app))
         if self.app_entry is app and self.app:
             return None
         if app.no_except:
@@ -458,18 +489,7 @@ class Manager():
         if self.app is app:
             return
 
-        if self.app:
-            if 'background' in dir(self.app):
-                try:
-                    self.app.background()
-                except:
-                    # Clear out the old app to ensure we don't recurse when
-                    # we switch to to the CrashApp. It's a bit freaky but
-                    # True has an empty directory and is is better than
-                    # None because it won't re-run the system start up
-                    # code (else clause).
-                    self.app = True
-                    raise
+        self._background()
 
         # Clear out any configuration from the old application
         self.event_mask = 0
@@ -513,13 +533,7 @@ class Manager():
             self._switch(app, entry)
             return
 
-        if self.app:
-            if 'background' in dir(self.app):
-                try:
-                    self.app.background()
-                except:
-                    self.app = True
-                    raise
+        self._background()
 
         # Clear out any configuration from the old application
         self.event_mask = 0
