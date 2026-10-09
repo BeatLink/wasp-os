@@ -247,7 +247,6 @@ class Manager():
         self.launcher = AppEntry('apps.system.grid_launcher.GridLauncherApp',
                                  'Launcher')
         self.launcher_ring = []
-        self.notifier = NotificationApp()
         self.notifications = {}
         self.musicstate = {}
         self.musicinfo = {}
@@ -699,7 +698,7 @@ class Manager():
                 self.switch(app_list[0])
             else:
                 if len(self.notifications):
-                    self.switch(self.notifier)
+                    self.switch(NotificationApp())
                 else:
                     # Nothing to notify... we must handle that here
                     # otherwise the display will flicker.
@@ -836,7 +835,7 @@ class Manager():
                 event[0] = 0
             elif self.app == self.quick_ring[0] and len(self.notifications):
                 event[0] = EventType.DOWN
-            elif self.app == self.notifier:
+            elif isinstance(self.app, NotificationApp):
                 event[0] = EventType.UP
             else:
                 event[0] = EventType.RIGHT
