@@ -10,7 +10,6 @@ manifest = (
     'apps/system/step_counter.py',
     'fonts/__init__.py',
     'fonts/clock.py',
-    'fonts/clock_dual.py',
     'fonts/sans18.py',
     'fonts/sans24.py',
     'fonts/sans28.py',
