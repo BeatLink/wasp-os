@@ -26,6 +26,9 @@ _NAMES = (
     ('Spinner', 'spinner'),
     ('Stopwatch', 'stopwatch'),
     ('ConfirmationView', 'confirmation_view'),
+    ('clip', 'page'),
+    ('scroll_in', 'page'),
+    ('draw_indicator', 'page'),
 )
 
 def __getattr__(name):

@@ -8,6 +8,7 @@ time.sleep_ms = sleep_ms
 time.ticks_ms = lambda : int(time.time() * 1000)
 time.ticks_us = lambda : int(time.time() * 1000 * 1000)
 time.ticks_diff = lambda x, y : x-y
+time.ticks_add = lambda x, y : x+y
 
 import sys, traceback
 def print_exception(exc, file=sys.stdout):
