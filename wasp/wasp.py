@@ -279,6 +279,8 @@ class Manager():
         self._blank_after = 15
         self._clock_24h = True
         self._step_goal = 10000
+        self._wake_on_raise = False
+        self._wake_on_tap = False
 
         self._alarms = []
         self._brightness = 2
@@ -302,6 +304,8 @@ class Manager():
                 self.register_defaults()
             self.register_packages()
             self._load_settings()
+            # Registering the step counter reset the accelerometer, so this comes after.
+            self._apply_wake()
 
             # System start up...
             watch.display.poweron()
@@ -337,6 +341,8 @@ class Manager():
             'blank_after': self._blank_after,
             'clock_24h': self._clock_24h,
             'step_goal': self._step_goal,
+            'wake_on_raise': self._wake_on_raise,
+            'wake_on_tap': self._wake_on_tap,
             'theme': list(self._theme),
             'face': [face.path, face.NAME] if isinstance(face, AppEntry) else None,
         })
@@ -390,6 +396,12 @@ class Manager():
             value = saved.get('step_goal')
             if value in STEP_GOALS:
                 self._step_goal = value
+            value = saved.get('wake_on_raise')
+            if value in (True, False):
+                self._wake_on_raise = value
+            value = saved.get('wake_on_tap')
+            if value in (True, False):
+                self._wake_on_tap = value
             value = saved.get('theme')
             if value and len(value) == len(self._theme):
                 self._theme = bytes(value)
@@ -490,6 +502,42 @@ class Manager():
     def blank_after(self, value):
         self._blank_after = value
         self._save_settings()
+
+    @property
+    def wake_on_raise(self):
+        """True to wake the watch when the wrist is raised."""
+        return self._wake_on_raise
+
+    @wake_on_raise.setter
+    def wake_on_raise(self, value):
+        self._wake_on_raise = value
+        self._apply_wake()
+        self._save_settings()
+
+    @property
+    def wake_on_tap(self):
+        """True to wake the watch on a double tap."""
+        return self._wake_on_tap
+
+    @wake_on_tap.setter
+    def wake_on_tap(self, value):
+        self._wake_on_tap = value
+        self._apply_wake()
+        self._save_settings()
+
+    def _apply_wake(self):
+        """Tell the accelerometer which gestures may wake the watch.
+
+        A watch whose accelerometer did not start, or whose firmware was built
+        for the other chip, keeps working without the gestures.
+        """
+        enable = getattr(watch.accel, 'enable_wake', None)
+        if not enable:
+            return
+        try:
+            enable(self._wake_on_raise, self._wake_on_tap)
+        except Exception as e:
+            sys.print_exception(e)
 
     @property
     def step_goal(self):
@@ -974,6 +1022,17 @@ class Manager():
             if 1 == self._button.get_event() or \
                     self._charging != watch.battery.charging():
                 self.wake()
+            elif (self._wake_on_raise or self._wake_on_tap) and self._woken():
+                self.wake()
+
+    def _woken(self):
+        """Ask the accelerometer whether a raise or a tap has happened."""
+        woken = getattr(watch.accel, 'woken', None)
+        try:
+            return woken() if woken else False
+        except Exception:
+            # A failed I2C read must not stop the sleep loop, and this runs every tick, so it stays quiet.
+            return False
 
     def run(self, no_except=True):
         """Run the system manager synchronously.
