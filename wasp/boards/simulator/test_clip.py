@@ -105,9 +105,21 @@ def _page_apps():
     alarm.num_alarms = 6
     alarm.scroll = 0
     alarm.page = -1
-    return {'grid': grid, 'list': listed, 'alarm': alarm}
+    apps = {'grid': grid, 'list': listed, 'alarm': alarm}
+    # Each page of the alarm editor, open on an alarm that repeats on some days.
+    for (step, name) in enumerate(('alarm-time', 'alarm-days', 'alarm-save')):
+        editor = AlarmApp()
+        editor.foreground()
+        editor.alarms = [[7, 35, 0x80 | 0x15]]
+        editor.num_alarms = 1
+        editor.page = 0
+        editor.step = step
+        apps[name] = editor
+    return apps
 
-@pytest.mark.parametrize("name", ('grid', 'list', 'alarm'))
+_PAGES = ('grid', 'list', 'alarm', 'alarm-time', 'alarm-days', 'alarm-save')
+
+@pytest.mark.parametrize("name", _PAGES)
 @pytest.mark.parametrize("step", (8, 16))
 def test_a_banded_page_matches_a_whole_one(draw, name, step):
     app = _page_apps()[name]
@@ -122,5 +134,21 @@ def test_a_banded_page_matches_a_whole_one(draw, name, step):
         rows = min(step, 240 - top)
         app.draw_rows(top, top, rows)
         top += rows
+
+    assert snapshot(0, 0, 240, 240) == whole
+
+
+@pytest.mark.parametrize("name", _PAGES)
+def test_a_banded_page_covers_every_pixel(draw, name):
+    """A slide draws over old rows, so each band must paint all of itself."""
+    app = _page_apps()[name]
+
+    draw.fill(0)
+    app.draw_rows(0, 0, 240)
+    whole = snapshot(0, 0, 240, 240)
+
+    draw.fill(0xf800)
+    for top in range(0, 240, 16):
+        app.draw_rows(top, top, 16)
 
     assert snapshot(0, 0, 240, 240) == whole

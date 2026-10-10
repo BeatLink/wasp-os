@@ -76,3 +76,42 @@ def test_snoozing_queues_the_entry_and_frees_the_app(tmp_path, system):
     assert type(system.app).__name__ != 'AlarmApp'
     assert entry._app is None
     assert len([t for (t, a) in system._alarms if a is entry]) == 2
+
+
+def test_deleting_the_last_alarm_is_saved(tmp_path, system):
+    (tmp_path / 'alarms.txt').write_text('7,30,194;')
+    entry = register_alarm(system)
+    system.switch(entry)
+    app = system.app
+    app.page = 0
+    app._remove_alarm(0)
+    system.switch(system.quick_ring[0])
+
+    assert (tmp_path / 'alarms.txt').read_text() == ''
+
+
+def test_a_phone_can_replace_the_alarms(tmp_path, system):
+    (tmp_path / 'alarms.txt').write_text('7,30,194;')
+    entry = register_alarm(system)
+    app = entry.load()
+
+    app.set_alarms([(6, 15, 0x80 | 0x1f), (9, 0, 0)])
+
+    assert app.num_alarms == 2
+    assert (tmp_path / 'alarms.txt').read_text() == '6,15,159;9,0,0;'
+    # Only the switched on alarm is scheduled, and the old one is gone.
+    scheduled = [t for (t, a) in system._alarms if a is entry]
+    assert len(scheduled) == 1
+    assert scheduled[0] == app.pending_alarms[0]
+
+
+def test_replacing_the_alarms_on_screen_redraws_the_list(tmp_path, system):
+    entry = register_alarm(system)
+    system.switch(entry)
+    app = system.app
+    app.page = 0
+
+    app.set_alarms([(6, 15, 0x80)])
+
+    assert (app.page, app.num_alarms) == (-1, 1)
+    system.switch(system.quick_ring[0])
