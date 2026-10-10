@@ -8,6 +8,13 @@
 import array
 import time
 from machine import Pin
+from micropython import const
+
+# The gesture the controller reports for two taps in quick succession.
+DOUBLE_TAP = const(0x0b)
+
+# The controller's motion mask register, whose lowest bit turns on double tap reporting.
+_MOTION_MASK = const(0xec)
 
 class CST816S:
     """Hynitron CST816S I2C touch controller driver.
@@ -91,17 +98,29 @@ class CST816S:
         self._reset()
         self.event[0] = 0
 
-    def sleep(self):
+    def sleep(self, double_tap=False):
         """Put touch controller chip on sleep mode to save power.
+
+        :param bool double_tap: Keep listening instead, reporting a double
+                                tap as :py:data:`DOUBLE_TAP`. Waking resets
+                                the chip, which turns double taps off again
+                                so single taps are not held back waiting for
+                                a second.
         """
         # Before we can send the sleep command we have to reset the
         # panel to get the I2C hardware running again...
         self._reset()
-        try:
-            self.i2c.writeto_mem(21, 0xa5, b'\x03')
-        except:
-            # If we can't power down then let's just put it in reset instead
-            self.tp_rst.off()
+        if double_tap:
+            try:
+                self.i2c.writeto_mem(21, _MOTION_MASK, b'\x01')
+            except OSError:
+                pass
+        else:
+            try:
+                self.i2c.writeto_mem(21, 0xa5, b'\x03')
+            except:
+                # If we can't power down then let's just put it in reset instead
+                self.tp_rst.off()
 
         # Ensure get_event() cannot return anything
         self.event[0] = 0

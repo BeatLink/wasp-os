@@ -170,8 +170,8 @@ class CST816SSim():
     def writeto_mem(self, addr, reg, buf, pins):
         tick(pins)
 
-        if reg == 0xa5:
-            # This will be a sleep command... which we can ignore
+        if reg == 0xa5 or reg == 0xec:
+            # A sleep command or the double tap setting, neither of which the simulator needs.
             return
 
         raise OSError

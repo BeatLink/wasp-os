@@ -32,5 +32,6 @@ manifest = (
     'widgets/stopwatch.py',
     'widgets/confirmation_view.py',
     'widgets/page.py',
+    'wristraise.py',
     'appregistry.py',
 )

@@ -36,22 +36,12 @@ class Accelerometer:
     is written in C. For that reason we simulate the accelerometer
     rather than emulate (by comparison we emulate the ST7789).
     """
-    wake_on = (False, False)
-    gesture = False
+    # Set by a test to stand in for the wrist moving.
+    xyz = (0, 0, 0)
 
     def reset(self):
         self._steps = 3
-        self.wake_on = (False, False)
-        # Set by a test to stand in for a raise or a tap.
-        self.gesture = False
-
-    def enable_wake(self, raise_=False, tap=False):
-        self.wake_on = (raise_, tap)
-
-    def woken(self):
-        happened = self.gesture and any(self.wake_on)
-        self.gesture = False
-        return happened
+        self.xyz = (0, 0, 0)
 
     @property
     def steps(self):
@@ -67,8 +57,7 @@ class Accelerometer:
         self.reset()
 
     def accel_xyz(self):
-        # TODO randomly alter the values over time
-        return (0,0,0)
+        return self.xyz
 
 class Backlight(object):
     def __init__(self, level=1):

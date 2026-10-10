@@ -26,6 +26,7 @@ import appregistry
 from apps.system import steplogger
 from apps.system.pager import PagerApp, CrashApp, NotificationApp
 from events import EventType, EventMask
+from micropython import const
 from pin_handler import PinHandler
 
 def _key_app(d):
@@ -217,6 +218,9 @@ BLANK_AFTER = (5, 10, 15, 30, 60)
 # The daily step goals the Settings app offers.
 STEP_GOALS = (2000, 4000, 6000, 8000, 10000, 12000, 15000, 20000)
 
+# The gesture the touch controller reports for a double tap.
+_DOUBLE_TAP = const(0x0b)
+
 
 def _key_alarm(d):
     """Get a sort key for alarms."""
@@ -281,6 +285,8 @@ class Manager():
         self._step_goal = 10000
         self._wake_on_raise = False
         self._wake_on_tap = False
+        self._raise = None
+        self._sample_at = 0
 
         self._alarms = []
         self._brightness = 2
@@ -304,8 +310,6 @@ class Manager():
                 self.register_defaults()
             self.register_packages()
             self._load_settings()
-            # Registering the step counter reset the accelerometer, so this comes after.
-            self._apply_wake()
 
             # System start up...
             watch.display.poweron()
@@ -511,7 +515,6 @@ class Manager():
     @wake_on_raise.setter
     def wake_on_raise(self, value):
         self._wake_on_raise = value
-        self._apply_wake()
         self._save_settings()
 
     @property
@@ -522,22 +525,7 @@ class Manager():
     @wake_on_tap.setter
     def wake_on_tap(self, value):
         self._wake_on_tap = value
-        self._apply_wake()
         self._save_settings()
-
-    def _apply_wake(self):
-        """Tell the accelerometer which gestures may wake the watch.
-
-        A watch whose accelerometer did not start, or whose firmware was built
-        for the other chip, keeps working without the gestures.
-        """
-        enable = getattr(watch.accel, 'enable_wake', None)
-        if not enable:
-            return
-        try:
-            enable(self._wake_on_raise, self._wake_on_tap)
-        except Exception as e:
-            sys.print_exception(e)
 
     @property
     def step_goal(self):
@@ -897,7 +885,11 @@ class Manager():
             self.switch(self.quick_ring[0])
             self.app.sleep()
         watch.display.poweroff()
-        watch.touch.sleep()
+        watch.touch.sleep(self._wake_on_tap)
+        if self._wake_on_raise:
+            # A fresh detector, so readings from before the last wake cannot complete a raise.
+            from wristraise import WristRaise
+            self._raise = WristRaise()
         self._charging = watch.battery.charging()
         self.sleep_at = None
 
@@ -910,6 +902,7 @@ class Manager():
                 self.app.wake()
             watch.backlight.set(self._brightness)
             watch.touch.wake()
+            self._raise = None
 
         self.keep_awake()
 
@@ -1022,17 +1015,33 @@ class Manager():
             if 1 == self._button.get_event() or \
                     self._charging != watch.battery.charging():
                 self.wake()
-            elif (self._wake_on_raise or self._wake_on_tap) and self._woken():
+            elif self._wake_on_tap and self._double_tapped():
+                self.wake()
+            elif self._raise and self._raised():
                 self.wake()
 
-    def _woken(self):
-        """Ask the accelerometer whether a raise or a tap has happened."""
-        woken = getattr(watch.accel, 'woken', None)
+    def _double_tapped(self):
+        """Take any touch from the sleeping screen and tell whether it was a double tap."""
+        event = watch.touch.get_event()
+        if not event:
+            return False
+        tapped = event[0] == _DOUBLE_TAP
+        watch.touch.reset_touch_data()
+        return tapped
+
+    def _raised(self):
+        """Read the accelerometer about ten times a second and tell whether the wrist was raised."""
+        now = watch.rtc.get_uptime_ms()
+        if now < self._sample_at:
+            return False
+        self._sample_at = now + 100
         try:
-            return woken() if woken else False
+            (x, y, z) = watch.accel.accel_xyz()
         except Exception:
             # A failed I2C read must not stop the sleep loop, and this runs every tick, so it stays quiet.
             return False
+        # The detector wants InfiniTime's axes, whose y runs the other way to the driver's.
+        return self._raise.sample(x, -y, z)
 
     def run(self, no_except=True):
         """Run the system manager synchronously.
