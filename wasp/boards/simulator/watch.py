@@ -36,8 +36,22 @@ class Accelerometer:
     is written in C. For that reason we simulate the accelerometer
     rather than emulate (by comparison we emulate the ST7789).
     """
+    wake_on = (False, False)
+    gesture = False
+
     def reset(self):
         self._steps = 3
+        self.wake_on = (False, False)
+        # Set by a test to stand in for a raise or a tap.
+        self.gesture = False
+
+    def enable_wake(self, raise_=False, tap=False):
+        self.wake_on = (raise_, tap)
+
+    def woken(self):
+        happened = self.gesture and any(self.wake_on)
+        self.gesture = False
+        return happened
 
     @property
     def steps(self):
