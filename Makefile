@@ -67,13 +67,22 @@ wasp/boards/$(BOARD_SAFE)/watch.py : wasp/boards/$(BOARD_SAFE)/watch.py.in
 micropython/mpy-cross/build/mpy-cross:
 	$(MAKE) -C micropython/mpy-cross
 
+# ACCEL=bma421 or ACCEL=bma425 builds firmware for that accelerometer alone, 6 KB smaller; the default supports both.
+ifneq ($(filter-out bma421 bma425,$(ACCEL)),)
+$(error ACCEL must be bma421 or bma425)
+endif
+ACCEL_CFLAGS = $(if $(ACCEL),-DBMA42X_ONLY_$(shell echo $(ACCEL) | tr a-z A-Z))
+
 micropython: build-$(BOARD_SAFE) wasp/boards/manifest_user_apps.py wasp/boards/$(BOARD_SAFE)/watch.py micropython/mpy-cross/build/mpy-cross
 	$(RM) micropython/ports/nrf/build-$(BOARD)-s132/frozen_content.c
+	# The accelerometer choice is a compiler flag, which make does not track, so always rebuild that driver.
+	find micropython/ports/nrf/build-$(BOARD)-s132 -name 'bma42*.o' -delete 2>/dev/null || true
 	$(MAKE) -C micropython/ports/nrf \
 		BOARD=$(BOARD) SD=s132 \
 		MICROPY_VFS_LFS2=1 \
 		FROZEN_MANIFEST=$(CURDIR)/wasp/boards/$(BOARD)/manifest.py \
-		USER_C_MODULES=$(CURDIR)/wasp/modules
+		USER_C_MODULES=$(CURDIR)/wasp/modules \
+		CFLAGS_EXTRA="$(ACCEL_CFLAGS)"
 	$(PYTHON) -m nordicsemi dfu genpkg \
 		--dev-type 0x0052 \
 		--application micropython/ports/nrf/build-$(BOARD)-s132/firmware.hex \
