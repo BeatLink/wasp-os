@@ -24,9 +24,21 @@ primitives, which all take ``first`` and ``rows``.
 
 The slide paces itself. A chunk is drawn and the panel then moves by exactly
 that many rows, so the scroll advances as fast as rows can be drawn and no
-faster. Drawing a chunk costs about 1.1 ms of fixed overhead plus 0.89 ms a
-row on the PineTime, so eight rows is a step of roughly 8.5 ms: inside a
-frame, and small enough that the fixed cost is only a sixth of the work.
+faster. Every chunk pays a fixed cost as well as one per row: blanking the
+gaps beside the tiles, the page indicator, and each clipped tile and icon,
+whose decoder starts from the icon's top. On a PineTime a step through a row
+of launcher tiles costs about 35 ms, so the step size sets the speed:
+
+========  ========  ==========
+Rows      Launcher  Alarm list
+========  ========  ==========
+8         815 ms    780 ms
+16        571 ms    598 ms
+24        520 ms    545 ms
+========  ========  ==========
+
+Sixteen rows takes most of the gain while still moving about 25 times a
+second.
 """
 
 import cards
@@ -103,7 +115,7 @@ def clear_around(y, height, top, tops, row_height, lefts, col_width):
         draw.fill(0, 0, y + cursor - top, 240, bottom - cursor)
 
 
-def scroll_in(draw_rows, up=True, step=8):
+def scroll_in(draw_rows, up=True, step=16):
     """Slide a new page into view, drawing it as it moves.
 
     The whole screen moves, so this cannot be combined with a fixed area.
