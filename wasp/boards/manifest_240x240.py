@@ -3,6 +3,7 @@
 """Shared manifest for applications that work well on a 240x240 display."""
 
 manifest = (
+    'apps/system/call.py',
     'apps/system/grid_launcher.py',
     'apps/system/pager.py',
     'apps/system/software.py',

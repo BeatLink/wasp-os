@@ -11,6 +11,7 @@ freeze('.', 'watch.py', opt=3)
 freeze('../..', manifest_240x240.manifest + manifest_user_apps.manifest +
     (
         'boot.py',
+        'companion.py',
         'draw565.py',
         'events.py',
         'drivers/bma421.py',

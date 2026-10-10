@@ -114,6 +114,15 @@ already splits and parses.
 | `pkg.enable(name)` / `pkg.disable(name)` | Update the persisted enabled set |
 | `pkg.cfg(name, json)` | Write `config.json` for a package, values as a JSON string |
 | `pkg.reindex()` | Rebuild the index by scanning |
+| `pkg.ls_dir(path)` | List a directory as `[name, size, is_dir]` entries, `""` for the root |
+| `pkg.send(path)` | Send a file back as base64 lines of up to 192 bytes, then its size and sum |
+| `pkg.rm_file(path)` | Delete one file |
+| `pkg.mem()` | Collect garbage and report the free and allocated heap |
+
+Paths are relative to `/flash` and may not start with `/` or contain `..`. Within that, `recv`
+writes anywhere, not only under `pkg/`, so the phone can restore a backup of `settings.json` or
+`alarms.txt`. `send` replies `{"ok": true, "tx": size}`, then `{"off": offset, "d": base64}` for
+each chunk, then `{"ok": true, "got": size, "sum": sum}` with the same additive sum `recv` uses.
 
 `recv` is the only one that leaves line mode. It has two transfer modes.
 

@@ -3,8 +3,10 @@
 ~~~~~~~~~~~~~~~~~~
 
 Installs, removes, enables and configures app packages held on the external
-flash. The companion app drives it over the REPL, one command per line, and
-every reply is a single JSON object tagged ``pkg``.
+flash. It also lists, sends and deletes other files on the flash, so the phone
+can back them up and restore them, and reports how much memory is free. The
+companion app drives it over the REPL, one command per line, and every reply
+is a single JSON object tagged ``pkg``.
 
 The format and the protocol are described in docs/app-packaging-design.md.
 
@@ -12,6 +14,7 @@ Paths are relative, so this assumes the working directory is ``/flash`` as it
 is during a normal boot.
 """
 
+import gc
 import json
 import os
 import sys
@@ -43,6 +46,9 @@ STALL = 10000
 # Bytes read at a time in raw mode, small enough to find room for on a busy heap.
 PIECE = 64
 
+# Bytes of a file sent in each line, before base64 makes them a third longer.
+CHUNK = 192
+
 # Fields the index keeps, so that nothing needs importing before the launcher
 # can draw.
 _INDEXED = ('name', 'label', 'cls', 'kind', 'resident', 'quick_ring')
@@ -52,6 +58,14 @@ def _reply(**kwargs):
     kwargs['t'] = 'pkg'
     json.dump(kwargs, sys.stdout)
     sys.stdout.write('\r\n')
+
+
+def _safe(path):
+    """Tell whether a path stays inside /flash, replying with an error if it does not."""
+    if not isinstance(path, str) or path.startswith('/') or '..' in path:
+        _reply(ok=False, err='bad path')
+        return False
+    return True
 
 
 def _is_dir(path):
@@ -250,6 +264,8 @@ def recv(path, size, b64=False):
     encoded line per chunk, which needs no such care and works on a firmware
     built without ``sys.stdin.buffer``.
     """
+    if not _safe(path):
+        return
     if not b64 and not hasattr(sys.stdin, 'buffer'):
         _reply(ok=False, err='raw unavailable, use b64')
         return
@@ -281,6 +297,91 @@ def recv(path, size, b64=False):
             micropython.kbd_intr(3)
 
     _reply(ok=(got == size), got=got, sum=checksum)
+
+
+def ls_dir(path=''):
+    """List a directory as [name, size, is_dir] entries, writing them out one at a time."""
+    if not _safe(path):
+        return
+    path = path.rstrip('/')
+    try:
+        names = os.listdir(path) if path else os.listdir()
+    except OSError:
+        _reply(ok=False, err='no such directory')
+        return
+    write = sys.stdout.write
+    write('{"t": "pkg", "ok": true, "dir": ')
+    write(json.dumps(path))
+    write(', "entries": [')
+    first = True
+    for name in names:
+        try:
+            stat = os.stat(path + '/' + name if path else name)
+            is_dir = bool(stat[0] & 0x4000)
+            size = 0 if is_dir else stat[6]
+        except OSError:
+            (is_dir, size) = (False, 0)
+        if not first:
+            write(', ')
+        first = False
+        write(json.dumps([name, size, is_dir]))
+    write(']}\r\n')
+
+
+def send(path):
+    """Send a file to the phone as base64 lines, then its size and byte sum as recv reports them."""
+    if not _safe(path):
+        return
+    try:
+        size = os.stat(path)[6]
+        f = open(path, 'rb')
+    except OSError:
+        _reply(ok=False, err='not found')
+        return
+    buf = bytearray(CHUNK)
+    view = memoryview(buf)
+    got = 0
+    checksum = 0
+    _reply(ok=True, tx=size)
+    try:
+        with f:
+            while True:
+                n = f.readinto(buf)
+                if not n:
+                    break
+                i = 0
+                while i < n:
+                    checksum += buf[i]
+                    i += 1
+                checksum &= 0xffffffff
+                text = binascii.b2a_base64(view[:n], newline=False).decode()
+                sys.stdout.write('{"t": "pkg", "off": %d, "d": "%s"}\r\n' % (got, text))
+                got += n
+    except Exception as e:
+        _reply(ok=False, err=str(e))
+        return
+    _reply(ok=(got == size), got=got, sum=checksum)
+
+
+def rm_file(path):
+    """Delete one file."""
+    if not _safe(path):
+        return
+    if not path or _is_dir(path):
+        _reply(ok=False, err='not a file')
+        return
+    try:
+        os.remove(path)
+    except OSError:
+        _reply(ok=False, err='not found')
+        return
+    _reply(ok=True, deleted=path)
+
+
+def mem():
+    """Collect garbage, then report the free and used heap in bytes."""
+    gc.collect()
+    _reply(ok=True, free=gc.mem_free(), alloc=gc.mem_alloc())
 
 
 def rm(name):
