@@ -100,19 +100,20 @@ def test_a_screen_timeout_not_offered_is_ignored(system):
     assert manager.blank_after == 15
 
 
-def test_the_settings_app_cycles_the_screen_timeout(system):
+def test_the_settings_app_picks_the_screen_timeout_tapped(system):
     (system, path) = system
     from settings import SettingsApp
     app = SettingsApp()
     system.switch(app)
     app._sett_index = app._settings.index('Screen Timeout')
     app._draw()
-    before = system.blank_after
-
-    app.touch((wasp.EventType.TOUCH, 120, 110))
-
     choices = wasp.BLANK_AFTER
-    assert system.blank_after == choices[(choices.index(before) + 1) % len(choices)]
+    wanted = (choices.index(system.blank_after) + 1) % len(choices)
+    (x, y, w) = app._cell(wanted, len(choices))
+
+    app.touch((wasp.EventType.TOUCH, x + w // 2, y + 20))
+
+    assert system.blank_after == choices[wanted]
     system.switch(system.quick_ring[0])
 
 
@@ -141,8 +142,9 @@ def test_the_settings_app_switches_the_clock_format(system):
     system.switch(app)
     app._sett_index = app._settings.index('Time Format')
     app._draw()
+    (x, y, w) = app._cell(0, 2)
 
-    app.touch((wasp.EventType.TOUCH, 120, 110))
+    app.touch((wasp.EventType.TOUCH, x + w // 2, y + 20))
 
     assert system.clock_24h is False
     system.switch(system.quick_ring[0])
@@ -182,7 +184,8 @@ def test_a_step_goal_not_offered_is_ignored(system):
     assert manager.step_goal == 10000
 
 
-def test_the_settings_app_cycles_the_step_goal(system):
+@pytest.mark.parametrize('x, step', ((60, -1), (180, 1)))
+def test_the_settings_app_steps_the_step_goal(system, x, step):
     (system, path) = system
     from settings import SettingsApp
     app = SettingsApp()
@@ -191,10 +194,10 @@ def test_the_settings_app_cycles_the_step_goal(system):
     app._draw()
     before = system.step_goal
 
-    app.touch((wasp.EventType.TOUCH, 120, 110))
+    app.touch((wasp.EventType.TOUCH, x, 210))
 
     goals = wasp.STEP_GOALS
-    assert system.step_goal == goals[(goals.index(before) + 1) % len(goals)]
+    assert system.step_goal == goals[(goals.index(before) + step) % len(goals)]
     system.switch(system.quick_ring[0])
 
 

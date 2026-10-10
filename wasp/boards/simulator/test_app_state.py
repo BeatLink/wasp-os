@@ -68,7 +68,7 @@ def test_the_stopwatch_keeps_counting_while_closed(system):
     entry = system.open_app('Stopclock')
     before = system.app
     before._timer.start()
-    before.touch(None)
+    before.touch((wasp.EventType.TOUCH, 120, 40))
     splits = list(before._splits)
     home(system)
 

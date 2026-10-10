@@ -5,13 +5,19 @@
 ~~~~~~~~~~~~~~~~~~
 """
 
+import cards
 import fonts
 import wasp
 
 class Stopwatch:
-    """A stopwatch widget"""
-    def __init__(self, y):
+    """A stopwatch widget
+
+    :param y:  Row the digits are drawn at
+    :param bg: Colour behind the digits, such as the card they sit on
+    """
+    def __init__(self, y, bg=0):
         self._y = y
+        self._bg = bg
         self.reset()
 
     def start(self):
@@ -64,10 +70,12 @@ class Stopwatch:
             y = self._y
             draw = wasp.watch.drawable
             draw.set_font(fonts.sans36)
-            draw.set_color(draw.lighten(wasp.system.theme('ui'), wasp.system.theme('contrast')))
+            bg = self._bg
+            draw.set_color(draw.lighten(wasp.system.theme('ui'), wasp.system.theme('contrast')), bg)
             w = fonts.width(fonts.sans36, t1)
             draw.string(t1, 180-w, y)
-            draw.fill(0, 0, y, 180-w, 36)
+            # Leave the margin alone, so a card the digits sit on keeps its corners.
+            draw.fill(bg, cards.MARGIN + 12, y, 180-w-cards.MARGIN-12, 36)
             draw.set_font(fonts.sans24)
             draw.string(t2, 180, y+18, width=46)
 
