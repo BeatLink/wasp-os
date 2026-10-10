@@ -10,10 +10,24 @@ information when applications crash.
 """
 
 import wasp
+import cards
+import fonts
 import icons
 
 import io
 import sys
+
+from micropython import const
+from widgets.page import draw_indicator
+
+# The text sits on one card, inset from its rounded corners.
+_TEXT_X = const(16)
+_TEXT_W = const(208)
+_TEXT_Y = const(14)
+_LINE = const(24)
+# Lines shown on a page, and lines moved by a page, keeping one line of overlap.
+_LINES = const(9)
+_STEP = const(8)
 
 class PagerApp():
     """Show a long text message in a pager."""
@@ -22,7 +36,6 @@ class PagerApp():
 
     def __init__(self, msg):
         self._msg = msg
-        self._scroll = wasp.widgets.ScrollIndicator()
 
     def foreground(self):
         """Activate the application."""
@@ -50,9 +63,11 @@ class PagerApp():
 
     def _redraw(self):
         """Redraw from scratch (jump to the first page)"""
+        draw = wasp.watch.drawable
+        draw.set_font(fonts.sans24)
         self._page = 0
-        self._chunks = wasp.watch.drawable.wrap(self._msg, 240)
-        self._numpages = (len(self._chunks) - 2) // 9
+        self._chunks = draw.wrap(self._msg, _TEXT_W)
+        self._numpages = max(0, len(self._chunks) - 2) // _STEP
         self._draw()
 
     def _draw(self):
@@ -61,21 +76,21 @@ class PagerApp():
         draw = wasp.watch.drawable
 
         mute(True)
-        draw.set_color(0xffff)
-        draw.fill()
+        draw.fill(0)
+        draw.rounded_rect(cards.MARGIN, cards.MARGIN, cards.SPAN, cards.SPAN,
+                          cards.COLOR)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        draw.set_font(fonts.sans24)
 
         page = self._page
-        i = page * 9
-        j = i + 11
+        i = page * _STEP
+        j = i + _LINES + 1
         chunks = self._chunks[i:j]
         for i in range(len(chunks)-1):
             sub = self._msg[chunks[i]:chunks[i+1]].rstrip()
-            draw.string(sub, 0, 24*i)
+            draw.string(sub, _TEXT_X, _TEXT_Y + _LINE*i)
 
-        scroll = self._scroll
-        scroll.up = page > 0
-        scroll.down = page < self._numpages
-        scroll.draw()
+        draw_indicator(page, self._numpages + 1)
 
         mute(False)
 

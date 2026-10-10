@@ -11,6 +11,8 @@ compute the solution.
 """
 
 import wasp
+import cards
+import fonts
 
 # 1-bit RLE, 32x32, generated from apps/calculator/icon.png, 141 bytes
 calc = (
@@ -30,6 +32,15 @@ fields = ( '789+('
            '456-)'
            '123*^'
            'C0./=' )
+
+# Five rows of five cards: the display and undo, then four rows of keys.
+_KEY = cards.size(5)
+_LEFTS = cards.edges((_KEY,) * 5)
+_TOPS = cards.edges((_KEY,) * 5)
+_PITCH = _LEFTS[1] - _LEFTS[0]
+_DISPLAY_W = _LEFTS[3] + _KEY - cards.MARGIN
+# Where a label sits within a key.
+_TEXT_Y = (_KEY - 24) // 2
 
 class CalculatorApp():
     NAME = 'Calc'
@@ -51,20 +62,14 @@ class CalculatorApp():
         wasp.system.request_event(wasp.EventMask.TOUCH)
 
     def touch(self, event):
-        if (event[2] < 48):
-            if (event[1] > 200): # undo button pressed
+        x = min(max(event[1] - cards.MARGIN, 0) // _PITCH, 4)
+        y = min(max(event[2] - cards.MARGIN, 0) // _PITCH, 4)
+        if y == 0:
+            if x == 4: # undo button pressed
                 if (self.output != ""):
                     self.output = self.output[:-1]
         else:
-            x = event[1] // 47
-            y = (event[2] // 48) - 1
-
-            # Error handling for touching at the border
-            if x > 4:
-                x = 4
-            if y > 3:
-                y = 3
-            button_pressed = fields[x + 5*y]
+            button_pressed = fields[x + 5*(y-1)]
             if (button_pressed == "C"):
                 self.output = ""
             elif (button_pressed == "="):
@@ -79,46 +84,38 @@ class CalculatorApp():
     def _draw(self):
         draw = wasp.watch.drawable
         theme = wasp.system.theme
-        line = draw.line
-        fill = draw.fill
 
         hi = theme('bright')
-        lo = theme('mid')
-        mid = draw.lighten(lo, 2)
-        bg = draw.darken(theme('ui'), theme('contrast'))
-        bg2 = draw.darken(bg, 2)
+        op = draw.lighten(theme('ui'), theme('contrast'))
+        accent = theme('ui')
 
-        # Draw the background
-        fill(0, 0, 0, 239, 47)
-        fill(0, 236, 239, 3)
-        fill(bg, 141, 48, 239-141, 236-48)
-        fill(bg2, 0, 48, 141, 236-48)
+        draw.fill(0)
+        draw.set_font(fonts.sans24)
+        draw.rounded_rect(cards.MARGIN, _TOPS[0], _DISPLAY_W, _KEY, cards.COLOR)
+        draw.rounded_rect(_LEFTS[4], _TOPS[0], _KEY, _KEY, cards.COLOR)
+        draw.set_color(hi, cards.COLOR)
+        draw.string("<", _LEFTS[4], _TOPS[0] + _TEXT_Y, width=_KEY)
 
-        # Make grid:
-        draw.set_color(lo)
-        for i in range(4):
-            # horizontal lines
-            line(x0=0,y0=(i+1)*47,x1=239,y1=(i+1)*47)
-            # vertical lines
-            line(x0=(i+1)*47,y0=47,x1=(i+1)*47,y1=235)
-        line(x0=0, y0=47, x1=0, y1=236)
-        line(x0=239, y0=47, x1=239, y1=236)
-        line(x0=0, y0=236, x1=239, y1=236)
-
-        # Draw button labels
-        draw.set_color(hi, bg2)
-        for x in range(5):
-            if x == 3:
-                draw.set_color(mid, bg)
-            for y in range(4):
+        # Digits in white, operators in the accent, and = filled with it.
+        for y in range(4):
+            for x in range(5):
                 label = fields[x + 5*y]
-                if (x == 0):
-                    draw.string(label, x*47+14, y*47+60)
+                bg = accent if label == '=' else cards.COLOR
+                if label == '=' or label in '0123456789.':
+                    fg = hi
+                elif label == 'C':
+                    fg = theme('mid')
                 else:
-                    draw.string(label, x*47+16, y*47+60)
-        draw.set_color(hi)
-        draw.string("<", 215, 10)
-    
+                    fg = op
+                draw.rounded_rect(_LEFTS[x], _TOPS[y+1], _KEY, _KEY, bg)
+                draw.set_color(fg, bg)
+                draw.string(label, _LEFTS[x], _TOPS[y+1] + _TEXT_Y, width=_KEY)
+
     def _update(self):
+        draw = wasp.watch.drawable
         output = self.output if len(self.output) < 12 else self.output[len(self.output)-12:]
-        wasp.watch.drawable.string(output, 0, 14, width=200, right=True)
+        draw.set_font(fonts.sans24)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        # Keep the padding inside the straight part of the card.
+        draw.string(output, cards.MARGIN + 12, _TOPS[0] + _TEXT_Y,
+                    width=_DISPLAY_W - 24, right=True)

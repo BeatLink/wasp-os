@@ -12,6 +12,7 @@ more than 4 times to make sure you notice.
 """
 
 import wasp
+import cards
 import fonts
 import widgets
 import math
@@ -42,6 +43,20 @@ _PRESETS = ['2,10', '10,2', '20,5']
 _TIME_MODE = const(1)  # if 0: duration of vibration will be discounted
 # from timer. if 1: not discounted
 
+
+# Four rows of cards: a header, two rows of digits, then the actions.
+_ROW_H = cards.size(4)
+_TOPS = cards.edges((_ROW_H,) * 4)
+_KEY_W = cards.size(5)
+_KEYS = cards.edges((_KEY_W,) * 5)
+_ACTION_W = cards.size(3)
+_ACTIONS = cards.edges((_ACTION_W,) * 3)
+# While running, a wide stop card sits beside a narrow +1 card.
+_ADD_W = _ACTION_W
+_STOP_W = cards.SPAN - _ADD_W - cards.GAP - 1
+_STOP_X, _ADD_X = cards.edges((_STOP_W, _ADD_W))
+_TIME_H = _TOPS[2] + _ROW_H - _TOPS[1]
+_TEXT_Y = (_ROW_H - 24) // 2
 
 class PomodoroApp():
     """Allows the user to set a periodic vibration alarm, Pomodoro style."""
@@ -128,8 +143,6 @@ class PomodoroApp():
 
     def swipe(self, event):
         if self.state == _STOPPED:
-            draw = wasp.watch.drawable
-            draw.set_font(fonts.sans24)
             if event[0] == wasp.EventType.UP:
                 self.nb_vibrat_per_alarm = max(1, (self.nb_vibrat_per_alarm + 1) % (_MAX_VIB + 1))
             elif event[0] == wasp.EventType.DOWN:
@@ -143,8 +156,7 @@ class PomodoroApp():
                     self.last_preset -= 1
                 self.last_preset %= len(_PRESETS)
                 self.queue = _PRESETS[self.last_preset]
-            draw.string(self.queue, 0, 35, right=True, width=240)
-            draw.string("V{}".format(self.nb_vibrat_per_alarm), 0, 35)
+            self._draw_header()
 
     def touch(self, event):
         if self.state == _RINGING:
@@ -179,10 +191,7 @@ class PomodoroApp():
                         if b.touch(event):
                             self.queue += str((i + 1) % 10)
                             break
-            draw = wasp.watch.drawable
-            draw.set_font(fonts.sans24)
-            draw.string(self.queue, 0, 35, right=True, width=240)
-            draw.string("V{}".format(self.nb_vibrat_per_alarm), 0, 35)
+            self._draw_header()
 
     def _start(self, first_run=False):
         if self.btns is not None:  # save some memory
@@ -219,70 +228,67 @@ class PomodoroApp():
     def _draw(self):
         """Draw the display from scratch."""
         draw = wasp.watch.drawable
-        draw.fill()
+        draw.fill(0)
+        draw.set_font(fonts.sans24)
+        Button = widgets.Button
 
         if self.state == _RINGING:
-            draw.set_font(fonts.sans24)
-            draw.string(self.NAME, 0, 150, width=240)
-            draw.blit(icon, 73, 50)
+            draw.rounded_rect(cards.MARGIN, cards.MARGIN, cards.SPAN,
+                              cards.SPAN, cards.COLOR)
+            draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+            draw.string(self.NAME, cards.MARGIN, 150, width=cards.SPAN)
+            draw.rleblit(icon, (104, 80), wasp.system.theme('bright'),
+                         cards.COLOR)
         elif self.state == _RUNNING:
-            self.btn_stop = widgets.Button(x=0, y=200, w=160, h=40,
-                                           label="STOP")
+            self.btn_stop = Button(_STOP_X, _TOPS[3], _STOP_W, _ROW_H, "Stop")
             self.btn_stop.draw()
-            self.btn_add = widgets.Button(x=160, y=200, w=80, h=40,
-                                          label="+1")
+            self.btn_add = Button(_ADD_X, _TOPS[3], _ADD_W, _ROW_H, "+1")
             self.btn_add.draw()
-            draw.reset()
+            draw.rounded_rect(cards.MARGIN, _TOPS[0], cards.SPAN, _ROW_H,
+                              cards.COLOR)
+            draw.rounded_rect(cards.MARGIN, _TOPS[1], cards.SPAN, _TIME_H,
+                              cards.COLOR)
             t = "Timer #{}/{}  ({})".format(self.last_run + 1,
                                             len(self.squeue),
                                             self.nb_vibrat_total // self.nb_vibrat_per_alarm // len(self.squeue))
-            draw.string(t, 10, 60)
-            draw.set_font(fonts.sans28)
-            draw.string(':', 110, 106, width=20)
-
+            draw.set_font(fonts.sans24)
+            draw.set_color(wasp.system.theme('mid'), cards.COLOR)
+            draw.string(t, cards.MARGIN, _TOPS[0] + _TEXT_Y, width=cards.SPAN)
             self._update()
-            draw.set_font(fonts.sans18)
         elif self.state == _STOPPED:
             self.btns = []
             fields = str(_FIELDS)
             for y in range(2):
                 for x in range(5):
-                    btn = widgets.Button(x=x*48,
-                                         y=y*65+60,
-                                         w=49,
-                                         h=59,
-                                         label=fields[x + 5*y])
+                    btn = Button(_KEYS[x], _TOPS[1 + y], _KEY_W, _ROW_H,
+                                 fields[x + 5*y])
                     btn.draw()
                     self.btns.append(btn)
-            self.btn_del = widgets.Button(x=0,
-                                          y=190,
-                                          w=76,
-                                          h=50,
-                                          label="Del.")
+            self.btn_del = Button(_ACTIONS[0], _TOPS[3], _ACTION_W, _ROW_H,
+                                  "Del.")
             self.btn_del.draw()
-            self.btn_add = widgets.Button(x=80,
-                                          y=190,
-                                          w=76,
-                                          h=50,
-                                          label="Then")
+            self.btn_add = Button(_ACTIONS[1], _TOPS[3], _ACTION_W, _ROW_H,
+                                  "Then")
             self.btn_add.draw()
-            self.btn_start = widgets.Button(x=160,
-                                            y=190,
-                                            w=80,
-                                            h=50,
-                                            label="Go")
-            self.btn_start.update(txt=0, frame=wasp.system.theme('mid'),
-                                  bg=0xf800)
-            draw.reset()
-            draw.set_font(fonts.sans24)
-            draw.string(self.queue, 0, 35, right=True, width=240)
-            draw.string("V{}".format(self.nb_vibrat_per_alarm), 0, 35)
-        sbar = wasp.system.bar
-        sbar.clock = True
-        sbar.draw()
+            self.btn_start = Button(_ACTIONS[2], _TOPS[3], _ACTION_W, _ROW_H,
+                                    "Go")
+            self.btn_start.update(wasp.system.theme('ui'), None,
+                                  wasp.system.theme('bright'))
+            self._draw_header()
+
+    def _draw_header(self):
+        """Draw the header card: vibrations on the left, the queue on the right."""
+        draw = wasp.watch.drawable
+        draw.rounded_rect(cards.MARGIN, _TOPS[0], cards.SPAN, _ROW_H,
+                          cards.COLOR)
+        draw.set_font(fonts.sans24)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        draw.string(self.queue, 80, _TOPS[0] + _TEXT_Y, width=140, right=True)
+        draw.set_color(wasp.system.theme('mid'), cards.COLOR)
+        draw.string("V{}".format(self.nb_vibrat_per_alarm), 16,
+                    _TOPS[0] + _TEXT_Y)
 
     def _update(self):
-        wasp.system.bar.update()
         draw = wasp.watch.drawable
         if self.state == _RUNNING:
             now = wasp.watch.rtc.time()
@@ -294,9 +300,12 @@ class PomodoroApp():
                 m = int(str(m)[-4:])
             else:
                 prefix = ""
-            draw.set_font(fonts.sans28)
-            draw.string("{}{:02d}:{:02d}".format(prefix, m, s), 90, 106,
-                        width=60)
+            draw.set_font(fonts.sans36)
+            draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+            # Keep the padding inside the straight part of the card.
+            draw.string("{}{:02d}:{:02d}".format(prefix, m, s),
+                        cards.MARGIN + 12, _TOPS[1] + (_TIME_H - 36) // 2,
+                        width=cards.SPAN - 24)
 
     def _alert(self):
         self.state = _RINGING

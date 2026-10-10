@@ -6,6 +6,9 @@
 
 Provide a daily step count.
 
+The first page shows today's count on a card with a bar filling towards the
+daily goal. Swipe up for a graph of each earlier day.
+
     .. figure:: res/screenshots/StepCounterApp.png
         :width: 179
 
@@ -14,31 +17,27 @@ The step counts automatically reset at midnight.
 
 import wasp
 
+import cards
 import fonts
 import icons
 import time
 import watch
 
-# 2-bit RLE, generated from wasp/resources/feet.png, 240 bytes
-feet = (
-    b'\x02'
-    b'00'
-    b'\x13\xc1-\xc4+\xc6*\xc6*\xc6&\xc3\x01\xc6\t\xc2'
-    b'\x1b\xc3\x02\xc5\x08\xc4\x1a\xc4\x01\xc5\x08\xc5\x19\xc4\x02\xc3'
-    b'\x08\xc6\x17\xc1\x02\xc3\x02\xc3\x08\xc6\x16\xc3\x02\xc1\x0e\xc6'
-    b'\x01\xc3\x12\xc3\x11\xc6\x01\xc3\x13\xc2\x05\xc2\n\xc5\x02\xc3'
-    b'\x10\xc2\x01\xc2\x02\xc6\n\xc4\x01\xc4\x10\xc2\x04\xc7\x0b\xc1'
-    b'\x03\xc3\x11\xc3\x02\xc8\x10\xc2\x01\xc3\r\xc2\x02\xc9\x13\xc3'
-    b'\x0b\xc1\x05\xc9\x0c\xc2\x05\xc3\x0b\xc2\x03\xc9\x0c\xc5\x03\xc2'
-    b'\x0c\xc2\x02\xca\x0c\xc6\x05\xc2\t\xc2\x02\xca\x0c\xc7\x03\xc3'
-    b'\r\xca\x0c\xc8\x02\xc3\x0c\xca\r\xc9\x02\xc1\r\xca\r\xc9'
-    b'\x04\xc2\n\xca\x0e\xc9\x02\xc3\n\xca\x0e\xc9\x02\xc2\x0b\xca'
-    b'\x0e\xca\x0e\xca\x0e\xca\x0f\xc9\x0e\xca\x0f\xca\r\xca\x0f\xca'
-    b'\r\xca\x10\xcb\x0b\xca\x10\xcc\n\xca\x10\xcd\t\xca\x11\xcc'
-    b'\x08\xca\x12\xcc\x07\xcb\x13\xcb\x06\xcb\x14\xcb\x05\xcc\x15\xca'
-    b'\x04\xcc\x16\xc9\x05\xcc\x17\xc7\x05\xcd\x17\xc7\x05\xcc\x1a\xc4'
-    b"\x07\xcb%\xca&\xca'\xc8)\xc6+\xc4\x0e"
-)
+from micropython import const
+from widgets.page import draw_indicator
+
+# The today page: a tall card with the count over a card with the goal.
+_ROW_H = cards.size(4)
+_ROW_TOPS = cards.edges((_ROW_H,) * 4)
+_COUNT_H = _ROW_TOPS[2] + _ROW_H - cards.MARGIN
+_GOAL_Y = _ROW_TOPS[3]
+# The progress bar, kept inside the straight part of the count card.
+_BAR_X = const(20)
+_BAR_W = const(200)
+_BAR_Y = _ROW_TOPS[2] + 20
+# The history pages: a card with the date and total over the graph.
+_GRAPH_TOP = _ROW_TOPS[1]
+_GRAPH_H = 240 - _GRAPH_TOP - 1
 
 class StepCounterApp():
     """Step counter application."""
@@ -49,7 +48,6 @@ class StepCounterApp():
         # The sensor is started when the app is registered, not here: a
         # reset zeroes the step count, and this runs every time the app is
         # opened.
-        self._scroll = wasp.widgets.ScrollIndicator()
         self._wake = 0
 
     def foreground(self):
@@ -64,7 +62,6 @@ class StepCounterApp():
         midnight then the reset doesn't happen for that day.
         """
         wasp.system.cancel_alarm(self._wake, self._reset)
-        wasp.system.bar.clock = True
         self._page = -1
         self._draw()
         wasp.system.request_event(wasp.EventMask.SWIPE_UPDOWN)
@@ -107,58 +104,61 @@ class StepCounterApp():
     def _draw(self):
         """Draw the display from scratch."""
         draw = wasp.watch.drawable
-        draw.fill()
+        draw.fill(0)
 
         if self._page == -1:
+            draw.rounded_rect(cards.MARGIN, cards.MARGIN, cards.SPAN,
+                              _COUNT_H, cards.COLOR)
+            draw.rleblit(icons.steps, (104, 20), wasp.system.theme('bright'),
+                         cards.COLOR)
+            draw.rounded_rect(cards.MARGIN, _GOAL_Y, cards.SPAN, _ROW_H,
+                              cards.COLOR)
+            draw.set_color(wasp.system.theme('mid'), cards.COLOR)
+            draw.set_font(fonts.sans24)
+            draw.string('Goal {}'.format(wasp.system.step_goal),
+                        cards.MARGIN, _GOAL_Y + (_ROW_H - 24) // 2,
+                        width=cards.SPAN)
             self._update()
-            wasp.system.bar.draw()
         else:
             self._update_graph()
 
     def _update(self):
         draw = wasp.watch.drawable
 
-        # Draw the icon
-        draw.blit(feet, 12, 132-24)
-
-        # Update the status bar
-        wasp.system.bar.update()
-
-        # Update the scroll indicator
-        scroll = self._scroll
-        scroll.up = False
-        scroll.draw()
-
         # Update the step count
         count = watch.accel.steps
-        t = str(count)
-        w = fonts.width(fonts.sans36, t)
         draw.set_font(fonts.sans36)
-        draw.set_color(draw.lighten(wasp.system.theme('spot1'), wasp.system.theme('contrast')))
-        draw.string(t, 228-w, 132-18)
+        draw.set_color(draw.lighten(wasp.system.theme('spot1'),
+                                    wasp.system.theme('contrast')),
+                       cards.COLOR)
+        draw.string(str(count), _BAR_X, 72, width=_BAR_W)
 
-        # The goal under the count, and a bar that fills in the accent colour once it is met.
+        # A bar that fills towards the goal, in the accent once it is met.
         goal = wasp.system.step_goal
-        draw.set_font(fonts.sans24)
-        draw.set_color(wasp.system.theme('mid'))
-        draw.string('of {}'.format(goal), 12, 160, width=216, right=True)
-        done = min(count, goal) * 216 // goal
+        done = min(count, goal) * _BAR_W // goal
         if done:
             colour = wasp.system.theme('ui') if count >= goal else wasp.system.theme('spot1')
-            draw.fill(colour, 12, 204, done, 8)
-        if done < 216:
-            draw.fill(wasp.system.theme('mid'), 12 + done, 204, 216 - done, 8)
+            draw.fill(colour, _BAR_X, _BAR_Y, done, 8)
+        if done < _BAR_W:
+            draw.fill(0, _BAR_X + done, _BAR_Y, _BAR_W - done, 8)
+
+        draw_indicator(0, 2)
 
     def _update_graph(self):
         draw = watch.drawable
+        draw.rounded_rect(cards.MARGIN, cards.MARGIN, cards.SPAN, _ROW_H,
+                          cards.COLOR)
         draw.set_font(fonts.sans24)
-        draw.set_color(0xffff)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        text_y = cards.MARGIN + (_ROW_H - 24) // 2
 
         # Draw the date
         now = int(watch.rtc.time())
         then = now - ((24*60*60) * self._page)
         walltime = time.localtime(then)
-        draw.string('{:02d}-{:02d}'.format(walltime[2], walltime[1]), 0, 0)
+        draw.string('{:02d}-{:02d}'.format(walltime[2], walltime[1]),
+                    16, text_y)
+        draw_indicator(1, 2)
 
         # Get the iterable step data for the currently selected date. A
         # watch whose step counter did not start has no logger at all.
@@ -167,16 +167,17 @@ class StepCounterApp():
 
         # Bail if there is no data
         if not data:
-            draw.string('No data', 239-160, 0, 160, right=True)
+            draw.string('No data', 100, text_y, 124, right=True)
             return
 
         color = wasp.system.theme('spot2')
 
         # Draw the frame
-        draw.fill(0x3969, 0, 39, 240, 1)
-        draw.fill(0x3969, 0, 239, 240, 1)
+        bottom = _GRAPH_TOP + _GRAPH_H
+        draw.fill(cards.COLOR, 0, _GRAPH_TOP, 240, 1)
+        draw.fill(cards.COLOR, 0, bottom, 240, 1)
         for i in (0, 60, 90, 120, 150, 180, 239):
-            draw.fill(0x3969, i, 39, 1, 201)
+            draw.fill(cards.COLOR, i, _GRAPH_TOP, 1, _GRAPH_H)
 
         total = 0
         for x, d in enumerate(data):
@@ -185,9 +186,9 @@ class StepCounterApp():
                 continue
             total += d
             d = d // 4
-            if d > 200:
-                draw.fill(0xffff, x, 239-200, 1, 200)
+            if d >= _GRAPH_H:
+                draw.fill(0xffff, x, bottom - _GRAPH_H + 1, 1, _GRAPH_H - 1)
             else:
-                draw.fill(color, x, 239-d, 1, d)
+                draw.fill(color, x, bottom - d, 1, d)
 
-        draw.string(str(total), 239-160, 0, 160, right=True)
+        draw.string(str(total), 100, text_y, 124, right=True)

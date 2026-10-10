@@ -77,4 +77,18 @@ def test_a_tap_on_a_wake_card_switches_that_gesture(system, row, name):
 
     assert getattr(system, name) is not saved
     setattr(system, name, saved)
+
+
+def test_a_tap_on_a_software_row_toggles_that_app(system):
+    from software import SoftwareApp
+    app = SoftwareApp()
+    system.switch(app)
+    (module, name, state) = app.db[2]
+
+    app.touch((wasp.EventType.TOUCH, 120, 130))
+    listed = any(a.NAME == name for a in system.launcher_ring)
+    app.touch((wasp.EventType.TOUCH, 120, 130))
+
+    assert listed != state
+    assert any(a.NAME == name for a in system.launcher_ring) == state
     system.switch(system.quick_ring[0])

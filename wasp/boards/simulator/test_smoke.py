@@ -192,12 +192,16 @@ def test_the_step_graph_survives_a_watch_with_no_step_counter(system):
         system.steps = steps
 
 def test_the_software_app_adds_calc_by_its_class_name(system):
-    from apps.system.software import SoftwareApp
+    from apps.system.software import SoftwareApp, _PITCH, _ROWS
+    # Start with Calc off, so the tap below turns it on.
+    earlier = [e for e in system.launcher_ring if e.NAME == 'Calc']
+    for e in earlier:
+        system.launcher_ring.remove(e)
     software = SoftwareApp()
     software.foreground()
     index = [entry[0] for entry in software.db].index('apps.user.calculator')
-    software.page = index // 5
-    software.touch((wasp.EventType.TOUCH, 120, (index % 5) * 40 + 2))
+    software.page = index // _ROWS
+    software.touch((wasp.EventType.TOUCH, 120, (index % _ROWS) * _PITCH + 2))
     software.background()
     entry = [e for e in system.launcher_ring if e.NAME == 'Calc'][0]
     try:
@@ -206,6 +210,7 @@ def test_the_software_app_adds_calc_by_its_class_name(system):
     finally:
         system.switch(system.quick_ring[0])
         system.launcher_ring.remove(entry)
+        system.launcher_ring.extend(earlier)
 
 def test_swipe_up_slides_the_launcher_in(system):
     assert wasp.watch.display.scroll_offset == 0
