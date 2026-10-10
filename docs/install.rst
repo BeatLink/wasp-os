@@ -122,6 +122,12 @@ For the pinetime we use:
 
     make -j `nproc` BOARD=pinetime all
 
+That firmware works with either accelerometer a PineTime may have. To save
+6 KB of flash, build for yours alone with ``ACCEL=bma421`` or
+``ACCEL=bma425``; ``print(wasp.watch.accel._dev)`` on the watch shows
+``chip_id=0x11`` for a BMA421 and ``0x13`` for a BMA425. Firmware built for
+the other chip still runs, but without the step counter.
+
 For the k9 we use:
 
 .. code-block:: sh
