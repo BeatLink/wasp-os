@@ -13,20 +13,22 @@ number 2048.
 """
 
 import wasp
+import cards
 import widgets
 import random
 import fonts
 from micropython import const
 
-SCREEN_SIZE = const(240)
-
-GRID_PADDING = const(8)
 GRID_SIZE = const(4)
-CELL_SIZE = const(50)
 
-GRID_BACKGROUND = const(0x942F)
-CELL_BACKGROUND = [0x9CB1, 0xEF3B, 0xEF19, 0xF58F, 0xF4AC, 0xF3EB, 0xF2E7, 0xEE6E, 0xEE6C, 0xEE4A, 0xEE27, 0xEE05]
-CELL_FOREGROUND = [0x9CB1, 0x736C, 0x736C, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE]
+# A four by four grid of tiles drawn as cards.
+_TILE = cards.size(GRID_SIZE)
+_EDGES = cards.edges((_TILE,) * GRID_SIZE)
+# Where a label sits within a tile.
+_TEXT_Y = (_TILE - 24) // 2
+
+CELL_BACKGROUND = [cards.COLOR, 0xEF3B, 0xEF19, 0xF58F, 0xF4AC, 0xF3EB, 0xF2E7, 0xEE6E, 0xEE6C, 0xEE4A, 0xEE27, 0xEE05]
+CELL_FOREGROUND = [cards.COLOR, 0x736C, 0x736C, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE, 0xFFBE]
 CELL_LABEL = ['','2','4','8','16','32','64','128','256','512','1K','2K'] # TODO: Display 1024 and 2048 (text-wrapping)
 
 # 1-bit RLE, 32x32, generated from apps/play2048/icon.png, 75 bytes
@@ -98,7 +100,7 @@ class Play2048App():
         """Draw the display from scratch."""
         board = self._board
         draw = wasp.watch.drawable
-        draw.fill(GRID_BACKGROUND)
+        draw.fill(0)
         draw.set_font(fonts.sans24)
         for y in range(GRID_SIZE):
             for x in range(GRID_SIZE):
@@ -106,11 +108,11 @@ class Play2048App():
 
     def _update(self, draw, cell, row, col):
         """Update the specified cell of the application display."""
-        x = GRID_PADDING + (col * (CELL_SIZE + GRID_PADDING))
-        y = GRID_PADDING + (row * (CELL_SIZE + GRID_PADDING))
+        x = _EDGES[col]
+        y = _EDGES[row]
+        draw.rounded_rect(x, y, _TILE, _TILE, CELL_BACKGROUND[cell])
         draw.set_color(CELL_FOREGROUND[cell], CELL_BACKGROUND[cell])
-        draw.fill(CELL_BACKGROUND[cell], x, y, CELL_SIZE, CELL_SIZE)
-        draw.string(CELL_LABEL[cell], x, y + 16, CELL_SIZE)
+        draw.string(CELL_LABEL[cell], x, y + _TEXT_Y, _TILE)
 
     def _start_game(self):
         """Start a new game."""

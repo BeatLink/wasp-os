@@ -12,6 +12,7 @@ A popular sliding block puzzle game.
 """
 
 import wasp
+import cards
 import widgets
 import random
 import fonts
@@ -19,14 +20,12 @@ from micropython import const
 
 _FONT = fonts.sans24
 _GRID_SIZE = const(4)
-_GRID_PADDING = const(8)
-_GRID_BACKGROUND = const(0x942F)
-_EMPTY_BACKGROUND = const(0x9CB1)
-_CELL_BACKGROUND = const(0xEF19)
-_CELL_FOREGROUND = const(0x736C)
 
-_SCREEN_SIZE = const(240)
-_CELL_SIZE = const((_SCREEN_SIZE - (_GRID_PADDING * (_GRID_SIZE + 1))) // _GRID_SIZE)
+# A four by four grid of tiles drawn as cards, with the gap left black.
+_TILE = cards.size(_GRID_SIZE)
+_EDGES = cards.edges((_TILE,) * _GRID_SIZE)
+# Where a number sits within a tile.
+_TEXT_Y = (_TILE - 24) // 2
 
 # 1-bit RLE, 32x32, generated from apps/puzzle15/icon.png, 95 bytes
 icon = (
@@ -96,7 +95,7 @@ class Puzzle15App():
     def _draw(self):
         """Draw the display from scratch."""
         draw = wasp.watch.drawable
-        draw.fill(_GRID_BACKGROUND)
+        draw.fill(0)
         draw.set_font(_FONT)
         for y in range(_GRID_SIZE):
             for x in range(_GRID_SIZE):
@@ -104,14 +103,14 @@ class Puzzle15App():
 
     def _update(self, draw, row, col):
         """Update the specified cell of the application display."""
-        x = _GRID_PADDING + (col * (_CELL_SIZE + _GRID_PADDING))
-        y = _GRID_PADDING + (row * (_CELL_SIZE + _GRID_PADDING))
+        x = _EDGES[col]
+        y = _EDGES[row]
         if self._board[row][col] != 0:
-            draw.set_color(_CELL_FOREGROUND, _CELL_BACKGROUND)
-            draw.fill(_CELL_BACKGROUND, x, y, _CELL_SIZE, _CELL_SIZE)
-            draw.string(str(self._board[row][col]), x, y + 16, _CELL_SIZE)
+            draw.rounded_rect(x, y, _TILE, _TILE, cards.COLOR)
+            draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+            draw.string(str(self._board[row][col]), x, y + _TEXT_Y, _TILE)
         else:
-            draw.fill(_EMPTY_BACKGROUND, x, y, _CELL_SIZE, _CELL_SIZE)
+            draw.fill(0, x, y, _TILE, _TILE)
 
     def _start_game(self):
         """Start a new game."""

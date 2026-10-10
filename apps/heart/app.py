@@ -33,6 +33,8 @@ Finally to download the logs for analysis try:
 """
 
 import wasp
+import cards
+import fonts
 import machine
 import ppg
 
@@ -46,6 +48,16 @@ icon = (
     b'\x04\t\x0b\t\x02\t\r\x12\x0f\x10\x11\x0e\x13\x0c\x15\n'
     b'\x17\x08\x19\x06\x1b\x04N'
 )
+
+# A short card with the reading above a tall card with the graph.
+_HEAD_H = cards.size(4)
+_GRAPH_Y = cards.edges((_HEAD_H, cards.SPAN - _HEAD_H - cards.GAP))[1]
+_CARD_H = cards.SPAN + cards.MARGIN - _GRAPH_Y
+# The graph keeps clear of the rounded corners at the top and bottom.
+_PLOT_Y = _GRAPH_Y + 12
+_PLOT_H = _CARD_H - 24
+_PLOT_END = cards.MARGIN + cards.SPAN
+_TEXT_Y = cards.MARGIN + (_HEAD_H - 24) // 2
 
 class HeartApp():
     """Heart rate monitor application."""
@@ -63,20 +75,32 @@ class HeartApp():
         # There is no delay after the enable because the redraw should
         # take long enough it is not needed
         draw = wasp.watch.drawable
-        draw.fill()
-        draw.set_color(wasp.system.theme('bright'))
-        draw.string('PPG graph', 0, 6, width=240)
+        draw.fill(0)
+        draw.rounded_rect(cards.MARGIN, cards.MARGIN, cards.SPAN, _HEAD_H,
+                          cards.COLOR)
+        draw.rleblit(icon, (cards.MARGIN + 12, cards.MARGIN + (_HEAD_H - 32) // 2),
+                     wasp.system.theme('bright'), cards.COLOR)
+        draw.rounded_rect(cards.MARGIN, _GRAPH_Y, cards.SPAN, _CARD_H,
+                          cards.COLOR)
+        self._reading('PPG graph')
 
         wasp.system.request_tick(1000 // 8)
 
         self._hrdata = ppg.PPG(wasp.watch.hrs.read_hrs())
         if self._debug:
             self._hrdata.enable_debug()
-        self._x = 0
+        self._x = cards.MARGIN
 
     def background(self):
         wasp.watch.hrs.disable()
         self._hrdata = None
+
+    def _reading(self, text):
+        """Show a line of text on the top card beside the heart."""
+        draw = wasp.watch.drawable
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        draw.set_font(fonts.sans24)
+        draw.string(text, 56, _TEXT_Y, width=164)
 
     def _subtick(self, ticks):
         """Notify the application that its periodic tick is due."""
@@ -85,9 +109,7 @@ class HeartApp():
         spl = self._hrdata.preprocess(wasp.watch.hrs.read_hrs())
 
         if len(self._hrdata.data) >= 240:
-            draw.set_color(wasp.system.theme('bright'))
-            draw.string('{} bpm'.format(self._hrdata.get_heart_rate()),
-                        0, 6, width=240)
+            self._reading('{} bpm'.format(self._hrdata.get_heart_rate()))
 
         # Graph is orange by default...
         color = wasp.system.theme('spot1')
@@ -97,16 +119,16 @@ class HeartApp():
             color = 0xffff
         if spl > 104 or spl < -104:
             spl = 0
-        spl += 104
+        spl = (spl + 104) * _PLOT_H // 208
 
         x = self._x
-        draw.fill(0, x, 32, 1, 208-spl)
-        draw.fill(color, x, 239-spl, 1, spl)
-        if x < 238:
-            draw.fill(0, x+1, 32, 2, 208)
+        draw.fill(cards.COLOR, x, _PLOT_Y, 1, _PLOT_H - spl)
+        draw.fill(color, x, _PLOT_Y + _PLOT_H - spl, 1, spl)
+        if x < _PLOT_END - 2:
+            draw.fill(cards.COLOR, x + 1, _PLOT_Y, 2, _PLOT_H)
         x += 2
-        if x >= 240:
-            x = 0
+        if x >= _PLOT_END:
+            x = cards.MARGIN
         self._x = x
 
     def tick(self, ticks):

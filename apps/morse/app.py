@@ -8,9 +8,9 @@ This app is a simple morse translator that also doubles as a notepad.
 Swipe up for a line, swipe down for a dot, tap for end letter, double tap for
 end word. Swipe right for space, twice for newline. Swipe left to delete
 character.
-Up to 7 lines of translation will be displayed on a 240x240 screen, and old
-lines will be deleted.
-There is a preview of the next letter at the bottom of the screen.
+Up to 6 lines of translation are shown on the top card, and old lines are
+deleted. The card below previews the dots and lines entered so far and the
+letter they make.
 
 
 .. figure:: apps/morse/screenshot.png
@@ -18,22 +18,25 @@ There is a preview of the next letter at the bottom of the screen.
 """
 
 import wasp
+import cards
 import fonts
 from micropython import const
 
 
-_WIDTH = const(240)
-_HEIGHT = const(240)
-# No easy way to make this depend on _WIDTH
+# The text card fills the screen above a short card for the letter being keyed.
+_INPUT_H = cards.size(4)
+_TEXT_H = cards.SPAN - _INPUT_H - cards.GAP
+_TEXT_Y, _INPUT_Y = cards.edges((_TEXT_H, _INPUT_H))
+# Text keeps clear of the rounded corners of its card.
+_TEXT_X = const(16)
+_WIDTH = const(208)
+# The longest run of dots and lines the preview has room for.
 _MAXINPUT = const(16)
 
-# These two need to match
 _FONTH = const(24)
-_FONT = fonts.sans24
-
-# Precomputed for efficiency
-_LINEH = const(30) # int(_FONTH * 1.25)
-_MAXLINES = const(7) # floor(_HEIGHT / _LINEH) - 1 # the "-1" is the input line
+_LINEH = const(26)
+_MAXLINES = const(6)
+_TOP = _TEXT_Y + (_TEXT_H - _LINEH * _MAXLINES) // 2 + 1
 
 # The morse lookup table, represented as a flattened binary tree.
 # The head is the value of the node, the tail are the subtrees:
@@ -97,12 +100,12 @@ class MorseApp():
                 else:
                     self.text[-1] = str(self.text[-1])[:-1]
             self.letter = ""
-            self.text[-1] = "{}  ".format(self.text[-1])  # adds space, otherwise the screen will not be erased there
             self._update()
-            self.text[-1] = str(self.text[-1])[:-2]  # removes space
         elif event[0] == wasp.EventType.RIGHT:
             if self.text[-1].endswith(" "):
                 self.text.append("")
+                if len(self.text) > _MAXLINES:
+                    self.text.pop(0)
                 self._draw()
             else:
                 self._add_letter(" ")
@@ -134,11 +137,15 @@ class MorseApp():
     def _draw(self):
         """Draw the display from scratch"""
         draw = wasp.watch.drawable
-        draw.fill()
-        i = 0
-        for line in self.text:
-            draw.string(line, 0, _LINEH * i)
-            i += 1
+        draw.fill(0)
+        draw.rounded_rect(cards.MARGIN, _TEXT_Y, cards.SPAN, _TEXT_H,
+                          cards.COLOR)
+        draw.rounded_rect(cards.MARGIN, _INPUT_Y, cards.SPAN, _INPUT_H,
+                          cards.COLOR)
+        draw.set_font(fonts.sans24)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        for i, line in enumerate(self.text[:-1]):
+            draw.string(self._fit(line), _TEXT_X, _TOP + _LINEH * i)
         self._update()
 
     def _update(self):
@@ -146,9 +153,27 @@ class MorseApp():
         input line and last line of the text.
         The full text area is updated in _draw() instead."""
         draw = wasp.watch.drawable
-        draw.string(self.text[-1], 0, _LINEH*(len(self.text)-1))
-        guess = self._lookup(self.letter)
-        draw.string("{} {}".format(self.letter, guess), 0, _HEIGHT - _FONTH, width=_WIDTH)
+        draw.set_font(fonts.sans24)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        self._left(self._fit(self.text[-1]),
+                   _TOP + _LINEH*(len(self.text)-1), _WIDTH)
+        y = _INPUT_Y + (_INPUT_H - _FONTH) // 2
+        draw.string(self._lookup(self.letter), _TEXT_X + _WIDTH - 40, y,
+                    width=40, right=True)
+        draw.set_color(wasp.system.theme('mid'), cards.COLOR)
+        self._left(self.letter, y, _WIDTH - 40)
+
+    def _left(self, s, y, width):
+        """Draw a string at the left of the card and blank the rest of its row."""
+        draw = wasp.watch.drawable
+        w = fonts.width(fonts.sans24, s) if s else 0
+        draw.string(s, _TEXT_X, y)
+        draw.fill(cards.COLOR, _TEXT_X + w, y, width - w, _FONTH)
+
+    def _fit(self, line):
+        """Cut a line saved by a wider layout down to what fits on the card."""
+        chunks = wasp.watch.drawable.wrap(line, _WIDTH)
+        return line[:chunks[1]] if len(chunks) > 1 else line
 
     def _lookup(self, s):
         i = 0 # start of the subtree (current node)

@@ -10,13 +10,22 @@ This app shows the bluetooth status and provides a button to disable/enable it.
 Unfortunately, re-enabling bluetooth normally has some issues, so as a
 workaround the "enable" button restarts the watch.
 
+The top card shows whether Bluetooth is on and the bottom card turns it off,
+or restarts the watch to turn it back on.
+
 .. figure:: apps/disa_b_l_e/screenshot.png
     :width: 179
 """
 
 import wasp
+import cards
+import fonts
 import widgets
 import ble
+
+# A status card above the action card.
+_CARD_H = cards.size(2)
+_STATUS_Y, _ACTION_Y = cards.edges((_CARD_H, _CARD_H))
 
 class DisaBLEApp():
     NAME = 'DisaBLE'
@@ -40,10 +49,18 @@ class DisaBLEApp():
 
     def _draw(self):
         draw = wasp.watch.drawable
-        draw.set_color(wasp.system.theme('bright'))
-        draw.fill()
-        draw.string('BLE status: ' + ('ON' if ble.enabled() else 'OFF'), 0, 60, width=240)
-        self._btn = widgets.Button(10, 120, 220, 80, 'Disable' if ble.enabled() else 'Reboot to enable')
+        on = ble.enabled()
+        fg = wasp.system.theme('bright') if on else wasp.system.theme('mid')
+        draw.fill(0)
+        draw.rounded_rect(cards.MARGIN, _STATUS_Y, cards.SPAN, _CARD_H,
+                          cards.COLOR)
+        draw.rleblit(self.ICON, (104, _STATUS_Y + 18), fg, cards.COLOR)
+        draw.set_color(fg, cards.COLOR)
+        draw.set_font(fonts.sans24)
+        draw.string('BLE is ' + ('on' if on else 'off'), cards.MARGIN + 12,
+                    _STATUS_Y + 62, width=cards.SPAN - 24)
+        self._btn = widgets.Button(cards.MARGIN, _ACTION_Y, cards.SPAN, _CARD_H,
+                                   'Disable' if on else 'Reboot to enable')
         self._btn.draw()
 
     def touch(self, event):

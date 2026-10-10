@@ -10,93 +10,19 @@
 
         Screenshot of the Music Player application
 
-Music Player Controller:
+The artist and track sit on the top card, over a row of three cards that
+skip back, play or pause, and skip forward.
 
-* Touch: play/pause
-* Swipe UPDOWN: Volume down/up
-* Swipe LEFTRIGHT: next/previous
+* Touch a card: previous, play/pause or next
+* Swipe UPDOWN: Volume up/down
 """
 
 import wasp
-
+import cards
+import fonts
 
 from micropython import const
 from gadgetbridge import send_cmd
-
-# 2-bit RLE, generated from wasp/resources/play.png, 303 bytes
-_PLAY = (
-    b'\x02'
-    b'HH'
-    b'?\xff\x8f\xcd8\xd41\xd9.\xdc*\xe0&\xe4#\xd1'
-    b'\x01\x02\xd2!\xcd\r\xce\x1f\xcb\x13\xcc\x1d\xca\x17\xcb\x1b'
-    b'\xca\x1a\xca\x19\xc9\x1d\xca\x17\xc9 \xc9\x16\xc8"\xc8\x15'
-    b'\xc8$\xc8\x14\xc7%\xc8\x13\xc8&\xc8\x11\xc8\x0c\xc4\x11'
-    b'\x07\xc7\x11\xc7\r\xc6\x0f\x07\xc8\x10\xc7\r\xc7\x0e\x08\xc7'
-    b'\x0f\xc7\x0e\xc9\x0c\t\xc7\x0e\xc7\x0e\xcb\n\t\xc7\x0e\xc7'
-    b'\x0e\xcc\t\t\xc7\r\xc7\x0f\xce\x07\n\xc6\r\xc7\x0f\xd0'
-    b'\x05\n\xc7\x0c\xc7\x0f\xd1\x04\n\xc7\x0c\xc7\x0f\xd3\x02\n'
-    b'\xc7\x0c\xc7\x0f\xd4\x01\n\x01\xc6\x0c\xc6\x10\xd5\n\x01\xc6'
-    b'\x0c\xc6\x10\xd6\n\xc6\x0c\xc6\x10\xd6\n\xc6\x0c\xc6\x10\xd5'
-    b'\n\xc7\x0c\xc7\x0f\xd4\x01\n\xc7\x0c\xc7\x0f\xd3\x02\n\xc7'
-    b'\x0c\xc7\x0f\xd1\x04\n\xc7\x0c\xc7\x0f\xd0\x05\n\xc7\x0c\xc7'
-    b'\x0f\xce\x07\n\xc7\r\xc7\x0e\xcc\t\t\xc7\x0e\xc7\x0e\xcb'
-    b'\n\t\xc7\x0e\xc7\x0e\xc9\x0c\t\xc7\x0f\xc7\r\xc7\x0e\x08'
-    b'\xc7\x10\xc7\r\xc6\x0f\x08\xc7\x10\xc8\x0c\xc4\x11\x07\xc8\x11'
-    b'\xc7\x0e\x02\x17\xc8\x12\xc8&\xc7\x14\xc8$\xc8\x15\xc8"'
-    b'\xc8\x16\xc9 \xc9\x17\xc9\x1e\xc9\x19\xc9\x1b\xca\x1b\xca\x18'
-    b'\xca\x1d\xcb\x14\xcb\x1f\xcd\x0e\xcd!\xd1\x04\xd1#\xe4&'
-    b'\xe0)\xdd-\xda1\xd47\xce?\xff\x8f'
-)
-
-# 2-bit RLE, generated from wasp/resources/pause.png, 320 bytes
-_PAUSE = (
-    b'\x02'
-    b'HH'
-    b'?\xff\x8f\xcd8\xd41\xd9.\xdc*\xe0&\xe4#\xd1'
-    b'\x03\xd2!\xcd\r\xce\x1f\xcb\x13\xcc\x1d\xca\x17\xcb\x1b\xca'
-    b'\x1a\xca\x19\xc9\x1d\xca\x17\xc9 \xc9\x16\xc8"\xc8\x15\xc8'
-    b'$\xc8\x14\xc7%\xc8\x13\xc8&\xc8\x11\xc8(\xc7\x11\xc7'
-    b'\x0c\xc6\x06\xc6\x0b\xc8\x10\xc7\x0c\xc6\x06\xc6\x0c\xc7\x0f\xc7'
-    b'\r\xc6\x06\xc6\r\xc7\x0e\xc7\r\xc6\x06\xc6\r\xc7\x0e\xc7'
-    b'\r\xc6\x06\xc6\r\xc7\r\xc7\x0e\xc6\x06\xc6\x0e\xc6\r\xc7'
-    b'\x0e\xc6\x06\xc6\x0e\xc7\x0c\xc7\x0e\xc6\x06\xc6\x0e\xc7\x0c\xc7'
-    b'\x0e\xc6\x06\xc6\x0e\xc7\x0c\xc7\x0e\xc6\x06\xc6\x0e\xc7\x0c\xc6'
-    b'\x0f\xc6\x06\xc6\x0f\xc6\x0c\xc6\x0f\xc6\x06\xc6\x0f\xc6\x0c\xc6'
-    b'\x0f\xc6\x06\xc6\x0f\xc6\x0c\xc6\x0f\xc6\x06\xc6\x0f\xc6\x0c\xc7'
-    b'\x0e\xc6\x06\xc6\x0e\xc7\x0c\xc7\x0e\xc6\x06\xc6\x0e\xc7\x0c\xc7'
-    b'\x0e\xc6\x06\xc6\x0e\xc7\x0c\xc7\x0e\xc6\x06\xc6\x0e\xc7\x0c\xc7'
-    b'\x0e\xc6\x06\xc6\x0e\xc7\r\xc7\r\xc6\x06\xc6\r\xc7\x0e\xc7'
-    b'\r\xc6\x06\xc6\r\xc7\x0e\xc7\r\xc6\x06\xc6\r\xc7\x0f\xc7'
-    b'\x0c\xc6\x06\xc6\x0c\xc7\x10\xc7\x0c\xc6\x06\xc6\x0c\xc7\x10\xc8'
-    b"(\xc8\x11\xc7'\xc8\x12\xc8&\xc7\x14\xc8$\xc8\x15\xc8"
-    b'"\xc8\x16\xc9 \xc9\x17\xc9\x1e\xc9\x19\xc9\x1b\xca\x1b\xca'
-    b'\x18\xca\x1d\xcb\x14\xcb\x1f\xcd\x0e\xcd!\xd1\x04\xd1#\xe4'
-    b'&\xe0)\xdd-\xda1\xd47\xce?\xff\x8f'
-)
-
-# 2-bit RLE, generated from wasp/resources/fwd.png, 93 bytes
-_FWD = (
-    b'\x02'
-    b'0\x18'
-    b'\xc4\x11\xc4\x11\xcc\x0f\xc6\x0f\xcd\x0e\xc7\x0e\xcf\x0c\xc9\x0c'
-    b'\xd1\n\xcb\n\xd2\t\xcc\t\xd4\x07\xce\x07\xd6\x05\xd0\x05'
-    b'\xd7\x04\xd1\x04\xd9\x02\xd3\x02\xda\x01\xd4\x01\xff;\x01\xd4'
-    b'\x01\xd9\x02\xd3\x02\xd7\x04\xd1\x04\xd6\x05\xd0\x05\xd4\x07\xce'
-    b'\x07\xd2\t\xcc\t\xd1\n\xcb\n\xcf\x0c\xc9\x0c\xcd\x0e\xc7'
-    b'\x0e\xcc\x0f\xc6\x0f\xca\x11\xc4\x11\xc6'
-)
-
-# 2-bit RLE, generated from wasp/resources/back.png, 93 bytes
-_BACK = (
-    b'\x02'
-    b'0\x18'
-    b'\xc6\x11\xc4\x11\xca\x0f\xc6\x0f\xcc\x0e\xc7\x0e\xcd\x0c\xc9\x0c'
-    b'\xcf\n\xcb\n\xd1\t\xcc\t\xd2\x07\xce\x07\xd4\x05\xd0\x05'
-    b'\xd6\x04\xd1\x04\xd7\x02\xd3\x02\xd9\x01\xd4\x01\xff;\x01\xd4'
-    b'\x01\xda\x02\xd3\x02\xd9\x04\xd1\x04\xd7\x05\xd0\x05\xd6\x07\xce'
-    b'\x07\xd4\t\xcc\t\xd2\n\xcb\n\xd1\x0c\xc9\x0c\xcf\x0e\xc7'
-    b'\x0e\xcd\x0f\xc6\x0f\xcc\x11\xc4\x11\xc4'
-)
 
 # 1-bit RLE, 32x32, generated from apps/music_player/icon.png, 99 bytes
 icon = (
@@ -110,9 +36,16 @@ icon = (
     b'\x19\x06\x17'
 )
 
-DISPLAY_WIDTH = const(240)
-ICON_SIZE = const(72)
-CENTER_AT = const((DISPLAY_WIDTH - ICON_SIZE) // 2)
+# A tall card for the artist and track over a row of three control cards.
+_KEY_H = cards.size(3)
+_INFO_H = cards.SPAN - _KEY_H - cards.GAP
+_INFO_Y, _KEY_Y = cards.edges((_INFO_H, _KEY_H))
+_KEY_W = cards.size(3)
+_KEY_X = cards.edges((_KEY_W,) * 3)
+# Text keeps clear of the rounded corners of the top card.
+_TEXT_X = const(16)
+_TEXT_W = const(208)
+_TRACK_LINES = const(4)
 
 class MusicPlayerApp(object):
     """ Music Player Controller application."""
@@ -120,9 +53,6 @@ class MusicPlayerApp(object):
     ICON = icon
 
     def __init__(self):
-        self._pauseplay = wasp.widgets.GfxButton(CENTER_AT, CENTER_AT, _PLAY)
-        self._back = wasp.widgets.GfxButton(0, 120-12, _BACK)
-        self._fwd = wasp.widgets.GfxButton(240-48, 120-12, _FWD)
         self._play_state = False
         self._musicstate = 'pause'
         self._artist = ''
@@ -130,15 +60,6 @@ class MusicPlayerApp(object):
         self._state_changed = True
         self._track_changed = True
         self._artist_changed = True
-
-    def _fill_space(self, key):
-        if key == 'top':
-            wasp.watch.drawable.fill(
-                x=0, y=0, w=DISPLAY_WIDTH, h=CENTER_AT)
-        elif key == 'down':
-            wasp.watch.drawable.fill(x=0, y=CENTER_AT + ICON_SIZE,
-                                     w=DISPLAY_WIDTH,
-                            h=DISPLAY_WIDTH - (CENTER_AT + ICON_SIZE))
 
     def foreground(self):
         """Activate the application."""
@@ -155,8 +76,10 @@ class MusicPlayerApp(object):
             self._artist = artist
         if track:
             self._track = track
-        wasp.watch.drawable.fill()
-        self.draw()
+        wasp.watch.drawable.fill(0)
+        self._draw_info()
+        for i in range(3):
+            self._draw_key(i)
         wasp.system.request_tick(1000)
         wasp.system.request_event(wasp.EventMask.SWIPE_UPDOWN |
                                   wasp.EventMask.TOUCH)
@@ -204,21 +127,20 @@ class MusicPlayerApp(object):
             send_cmd('{"t":"music", "n":"volumedown"} ')
 
     def touch(self, event):
-        if self._pauseplay.touch(event):
+        if event[2] < _KEY_Y:
+            return
+        if event[1] < _KEY_X[1]:
+            send_cmd('{"t":"music", "n":"previous"} ')
+        elif event[1] < _KEY_X[2]:
             self._play_state = not self._play_state
             if self._play_state:
                 self._musicstate = 'play'
-                self._pauseplay.gfx = _PAUSE
-                self._pauseplay.draw()
                 send_cmd('{"t":"music", "n":"play"} ')
             else:
                 self._musicstate = 'pause'
-                self._pauseplay.gfx = _PLAY
-                self._pauseplay.draw()
                 send_cmd('{"t":"music", "n":"pause"} ')
-        elif self._back.touch(event):
-            send_cmd('{"t":"music", "n":"previous"} ')
-        elif self._fwd.touch(event):
+            self._draw_key(1)
+        else:
             send_cmd('{"t":"music", "n":"next"} ')
 
     def draw(self):
@@ -226,33 +148,66 @@ class MusicPlayerApp(object):
         self._draw()
 
     def _draw(self):
-        """Redraw the updated zones."""
+        """Redraw the cards whose contents changed."""
         if self._state_changed:
-            self._pauseplay.draw()
-        if self._track_changed:
-            self._draw_label(self._track, 24 + 144)
-        if self._artist_changed:
-            self._draw_label(self._artist, 12)
-        self._back.draw()
-        self._fwd.draw()
+            self._draw_key(1)
+        if self._track_changed or self._artist_changed:
+            self._draw_info()
 
-    def _draw_label(self, label, pos):
-        """Redraw label info"""
-        if label:
-            draw = wasp.watch.drawable
-            chunks = draw.wrap(label, 240)
-            self._fill_space(pos)
-            for i in range(len(chunks)-1):
-                sub = label[chunks[i]:chunks[i+1]].rstrip()
-                draw.string(sub, 0, pos + 24 * i, 240)
+    def _draw_info(self):
+        """Draw the artist in grey above the wrapped track title, centred on the card."""
+        draw = wasp.watch.drawable
+        draw.rounded_rect(cards.MARGIN, _INFO_Y, cards.SPAN, _INFO_H,
+                          cards.COLOR)
+        draw.set_font(fonts.sans24)
+        track = self._track
+        chunks = draw.wrap(track, _TEXT_W) if track else (0,)
+        lines = min(len(chunks) - 1, _TRACK_LINES)
+        y = _INFO_Y + (_INFO_H - 26 * (lines + 1)) // 2
+
+        draw.set_font(fonts.sans18)
+        draw.set_color(wasp.system.theme('mid'), cards.COLOR)
+        artist = self._artist
+        if artist:
+            end = draw.wrap(artist, _TEXT_W)[1]
+            draw.string(artist[:end].rstrip(), _TEXT_X, y + 4, width=_TEXT_W)
+
+        draw.set_font(fonts.sans24)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        for i in range(lines):
+            sub = track[chunks[i]:chunks[i+1]].rstrip()
+            draw.string(sub, _TEXT_X, y + 26 * (i + 1), width=_TEXT_W)
+
+    def _draw_key(self, i):
+        """Draw one control card with its symbol."""
+        draw = wasp.watch.drawable
+        x = _KEY_X[i]
+        # The play card is the main action, so it carries the accent.
+        bg = wasp.system.theme('ui') if i == 1 else cards.COLOR
+        draw.rounded_rect(x, _KEY_Y, _KEY_W, _KEY_H, bg)
+        fg = wasp.system.theme('bright')
+        cx = x + _KEY_W // 2
+        cy = _KEY_Y + _KEY_H // 2
+        if i == 0:
+            draw.fill(fg, cx - 12, cy - 12, 4, 24)
+            for j in range(12):
+                draw.fill(fg, cx - 6 + j, cy - j, 1, 2 * j + 1)
+        elif i == 2:
+            for j in range(12):
+                draw.fill(fg, cx + 5 - j, cy - j, 1, 2 * j + 1)
+            draw.fill(fg, cx + 8, cy - 12, 4, 24)
+        elif self._play_state:
+            draw.fill(fg, cx - 12, cy - 15, 9, 30)
+            draw.fill(fg, cx + 3, cy - 15, 9, 30)
+        else:
+            for j in range(18):
+                draw.fill(fg, cx - 8 + j, cy - 18 + j, 1, 36 - 2 * j)
 
     def _update(self):
         if self._musicstate == 'play':
             self._play_state = True
-            self._pauseplay.gfx = _PAUSE
         elif self._musicstate == 'pause':
             self._play_state = False
-            self._pauseplay.gfx = _PLAY
         self._draw()
 
     def update(self):

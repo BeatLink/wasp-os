@@ -26,6 +26,18 @@ And to upload:
 """
 
 import wasp
+import cards
+import fonts
+from micropython import const
+
+# The file name sits on a card along the bottom of the screen.
+_NAME_H = const(48)
+_NAME_Y = 240 - cards.MARGIN - _NAME_H
+# Text inside a card keeps clear of its rounded corners.
+_TEXT_X = cards.MARGIN + 12
+_TEXT_W = cards.SPAN - 24
+# The warning about a bad file fills the space above the file name.
+_WARN_H = _NAME_Y - cards.GAP - cards.MARGIN
 
 class GalleryApp():
     NAME = 'Gallery'
@@ -65,21 +77,30 @@ class GalleryApp():
 
     def _invalid_file(self, filename):
         draw = wasp.watch.drawable
-        draw.string('Invalid BMP file', 0, 10, width=240)
-        draw.blit(self.ICON, 104, 104)
+        draw.rounded_rect(cards.MARGIN, cards.MARGIN, cards.SPAN, _WARN_H, cards.COLOR)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        draw.set_font(fonts.sans24)
+        draw.string('Invalid BMP file', _TEXT_X, 20, width=_TEXT_W)
+        draw.rleblit(self.ICON, (104, 104), wasp.system.theme('bright'), cards.COLOR)
         draw.line(72,52, 168,148, 3, 0xf800)
 
     def _draw(self):
         draw = wasp.watch.drawable
-        draw.fill()
+        draw.fill(0)
+        draw.set_font(fonts.sans24)
         if not self.files:
-            draw.string('No files', 0, 60, width=240)
-            draw.string('in gallery/', 0, 98, width=240)
+            draw.rounded_rect(cards.MARGIN, cards.MARGIN, cards.SPAN, cards.SPAN, cards.COLOR)
+            draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+            draw.string('No files', _TEXT_X, 92, width=_TEXT_W)
+            draw.set_color(wasp.system.theme('mid'), cards.COLOR)
+            draw.string('in gallery/', _TEXT_X, 124, width=_TEXT_W)
         else:
             filename = self.files[self.index]
-            # The file name will only show until the image overwrites it,
-            # so let's put it at the bottom so the user has a chance to see it
-            draw.string(filename[:(draw.wrap(filename, 240)[1])], 0, 200)
+            # The file name shows until the image covers it, so it goes at the bottom.
+            draw.rounded_rect(cards.MARGIN, _NAME_Y, cards.SPAN, _NAME_H, cards.COLOR)
+            draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+            draw.string(filename[:(draw.wrap(filename, _TEXT_W)[1])], _TEXT_X,
+                        _NAME_Y + (_NAME_H - 24) // 2, width=_TEXT_W)
             file = open("gallery/{}".format(filename), "rb")
             display = wasp.watch.display
 

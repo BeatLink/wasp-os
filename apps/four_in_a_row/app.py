@@ -18,6 +18,8 @@ This app is powered by a compact version of the Alpha Beta pruning algorithm.  F
 """
 
 import wasp, array
+import cards
+import fonts
 from micropython import const
 
 # parameters of the 'Four in a Row' game
@@ -42,6 +44,18 @@ _NPAD    = const(2)
 # states of game
 _INTRO, _PLAY, _GAMEOVER = const(0), const(1), const(2)
 _NLEVEL = const(7)
+
+# The menu is three stacked cards: the title, the level picker and the score.
+_MENU_H = cards.size(3)
+_MENU_Y = cards.edges((_MENU_H,) * 3)
+# The level picker holds one pill per level inside its card.
+_PILL_W = const(28)
+_PILL_H = const(43)
+_PILL_PITCH = const(31)
+_PILL_X0 = const(13)
+# The result card sits over the row the counter is chosen in.
+_RESULT_Y = const(2)
+_RESULT_H = const(30)
 
 def _gameOver(bitmap):
     for s in [1, _NCOLUMN, _NCOLUMN+2, _NCOLUMN+1]:
@@ -111,15 +125,49 @@ class FourInARowApp():
 
     def __init__(self):
         self.screen = _INTRO
-        self.level = wasp.widgets.Slider(_NLEVEL, x=10, y=150, color=_cPLAY)
+        self.level = 0
         self.nwin  = array.array('H', [0] * _NLEVEL)
         self.ngame = array.array('H', [0] * _NLEVEL)
 
+    def _showLevel(self):
+        draw = wasp.watch.drawable
+        y = _MENU_Y[1]
+        draw.rounded_rect(cards.MARGIN, y, cards.SPAN, _MENU_H, cards.COLOR)
+        draw.set_font(fonts.sans24)
+        y += (_MENU_H - _PILL_H) // 2
+        for i in range(_NLEVEL):
+            x = _PILL_X0 + i * _PILL_PITCH
+            if i == self.level:
+                bg = wasp.system.theme('ui')
+                draw.rounded_rect(x, y, _PILL_W, _PILL_H, bg, cards.COLOR)
+                draw.set_color(wasp.system.theme('bright'), bg)
+            else:
+                draw.set_color(wasp.system.theme('mid'), cards.COLOR)
+            label = str(i)
+            w = draw.bounding_box(label)[0]
+            draw.string(label, x + (_PILL_W - w) // 2, y + (_PILL_H - 24) // 2)
+
     def _showStats(self):
-        nwin  = self.nwin[self.level.value]
-        ngame = self.ngame[self.level.value]
+        draw = wasp.watch.drawable
+        nwin  = self.nwin[self.level]
+        ngame = self.ngame[self.level]
         pc = int(100 * nwin / ngame + 0.5) if ngame > 0 else 0
-        wasp.watch.drawable.string('level %d  won %d%%' % (self.level.value, pc), 0, 200, width=_NPIXEL)
+        y = _MENU_Y[2]
+        draw.rounded_rect(cards.MARGIN, y, cards.SPAN, _MENU_H, cards.COLOR)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        draw.set_font(fonts.sans24)
+        draw.string('Won %d%%' % pc, cards.MARGIN + 12, y + 14, width=cards.SPAN - 24)
+        draw.set_color(wasp.system.theme('mid'), cards.COLOR)
+        draw.set_font(fonts.sans18)
+        draw.string('at level %d' % self.level, cards.MARGIN + 12, y + 44, width=cards.SPAN - 24)
+
+    def _showResult(self, message):
+        draw = wasp.watch.drawable
+        draw.rounded_rect(cards.MARGIN, _RESULT_Y, cards.SPAN, _RESULT_H, cards.COLOR)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        draw.set_font(fonts.sans24)
+        w = draw.bounding_box(message)[0]
+        draw.string(message, (_NPIXEL - w) // 2, _RESULT_Y + (_RESULT_H - 24) // 2)
 
     def _place(self, x, y, colour):
         wasp.watch.drawable.fill(x=_NBORDER + x*_NCELL + _NPAD, y=_NBORDER + (_NROW-y)*_NCELL + _NPAD, w=_NCELL - 2*_NPAD, h=_NCELL - 2*_NPAD, bg=colour)
@@ -128,12 +176,17 @@ class FourInARowApp():
         draw = wasp.watch.drawable
 
         # draw board from state
-        draw.fill()
+        draw.fill(0)
         if self.screen == _INTRO:
-            draw.string('FOUR IN A ROW', 0, 30, width=_NPIXEL)
-            draw.string('Touch sets column', 0, 80, width=_NPIXEL)
-            draw.string('swipe down to play', 0, 110, width=_NPIXEL)
-            self.level.draw()
+            y = _MENU_Y[0]
+            draw.rounded_rect(cards.MARGIN, y, cards.SPAN, _MENU_H, cards.COLOR)
+            draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+            draw.set_font(fonts.sans24)
+            draw.string('Four in a Row', cards.MARGIN + 12, y + 14, width=cards.SPAN - 24)
+            draw.set_color(wasp.system.theme('mid'), cards.COLOR)
+            draw.set_font(fonts.sans18)
+            draw.string('Swipe down to play', cards.MARGIN + 12, y + 44, width=cards.SPAN - 24)
+            self._showLevel()
             self._showStats()
         else:
             draw.fill(x=0, y=_NBORDER+_NCELL, w=_NPIXEL, h=_NPIXEL-_NCELL, bg=_BLUE)
@@ -150,8 +203,9 @@ class FourInARowApp():
     # touch to set the drop column
     def touch(self, event):
         if self.screen == _INTRO:
-            self.level.touch(event)
-            self.level.update()
+            # The x position picks the level, as a slider would.
+            self.level = min(max((event[1] - _PILL_X0) // _PILL_PITCH, 0), _NLEVEL - 1)
+            self._showLevel()
             self._showStats()
         elif self.screen == _PLAY:
             self._place(self.x, _NROW, _BLACK)
@@ -183,33 +237,33 @@ class FourInARowApp():
                 self.low   = bytearray(_NCOLUMN)
                 self.screen = _PLAY
                 self.foreground()
-                if self.ngame[self.level.value] % 2:
+                if self.ngame[self.level] % 2:
                     self._drop(rndColumn(), _cCOMP)
             elif self.screen == _PLAY and self.low[self.x] != _NROW:
                 # play human PLAYer
                 self._drop(self.x, _cPLAY)
                 if _gameOver(self.bPLAY):
-                    wasp.watch.drawable.string('YOU WIN!', 0, 0, width=_NPIXEL)
-                    self.nwin[self.level.value] += 1
+                    self._showResult('You win!')
+                    self.nwin[self.level] += 1
                     self.screen = _GAMEOVER
                     return
 
                 if sum(self.low) < 3:
                     x = rndColumn()
                 else:
-                    depth = self.level.value + 1
+                    depth = self.level + 1
                     if depth == 2 and sum(self.low) < 8:
                         depth += 1
                     v, x = _swapmin(self.bCOMP, self.bPLAY, self.low, depth, -_NBOARD, _NBOARD)
                 self._drop(x, _cCOMP)
                     
                 if _gameOver(self.bCOMP):
-                    wasp.watch.drawable.string('YOU LOSE!', 0, 0, width=_NPIXEL)
+                    self._showResult('You lose!')
                     self.screen = _GAMEOVER
                     return
 
                 self._place(self.x, _NROW, _cPLAY)
             elif self.screen == _GAMEOVER:
-                self.ngame[self.level.value] += 1
+                self.ngame[self.level] += 1
                 self.screen = _INTRO
                 self.foreground()

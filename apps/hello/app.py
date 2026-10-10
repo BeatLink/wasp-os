@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: MY-LICENSE
 # Copyright (C) YEAR(S), AUTHOR
 
+import cards
+import fonts
 import wasp
+from micropython import const
 
 # 1-bit RLE, 32x32, generated from apps/hello/icon.png, 149 bytes
 icon = (
@@ -18,6 +21,9 @@ icon = (
     b'\x11\r\x16\x08\t'
 )
 
+# Inset that keeps padded text clear of the card's rounded corners.
+_INSET = const(12)
+
 class HelloApp():
     """A hello world application for wasp-os."""
     NAME = "Hello"
@@ -31,5 +37,12 @@ class HelloApp():
 
     def _draw(self):
         draw = wasp.watch.drawable
-        draw.fill()
-        draw.string(self.msg, 0, 108, width=240)
+        draw.fill(0)
+        draw.rounded_rect(cards.MARGIN, cards.MARGIN, cards.SPAN, cards.SPAN,
+                          cards.COLOR)
+        fg = wasp.system.theme('bright')
+        draw.rleblit(icon, (104, 72), fg, cards.COLOR)
+        draw.set_color(fg, cards.COLOR)
+        draw.set_font(fonts.sans24)
+        draw.string(self.msg, cards.MARGIN + _INSET, 124,
+                    width=cards.SPAN - 2 * _INSET)

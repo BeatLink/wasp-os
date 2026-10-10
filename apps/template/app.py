@@ -4,10 +4,23 @@
 below as part of a template application. Note that the template does
 not rely on any specific parent class. This is because applications in
 wasp-os can rely on *duck typing* making a class hierarchy pointless.
+
+The template draws its page the way every wasp-os app does: grey cards on a
+black background, laid out from the numbers in ``cards``. It shows its name on
+one card and the last event it received on a second card below it.
 """
 
 import wasp
+import cards
+import fonts
 import icons
+from micropython import const
+
+# Two cards stacked down the screen, worked out once when the module loads.
+_CARD_H = cards.size(2)
+_TOPS = cards.edges((_CARD_H, _CARD_H))
+# Inset that keeps padded text clear of the card's rounded corners.
+_INSET = const(12)
 
 class TemplateApp():
     """Template application.
@@ -98,16 +111,14 @@ class TemplateApp():
 
     def press(self, button, state):
         """Notify the application of a button-press event."""
-        draw = wasp.watch.drawable
-        draw.string('Button', 0, 108, width=240)
+        self._update('Button')
 
     def swipe(self, event):
         """Notify the application of a touchscreen swipe event."""
-        draw = wasp.watch.drawable
         if event[0] == wasp.EventType.UP:
-            draw.string('Swipe up', 0, 108, width=240)
+            self._update('Swipe up')
         else:
-            draw.string('Swipe down', 0, 108, width=240)
+            self._update('Swipe down')
 
     def tick(self, ticks):
         """Notify the application that its periodic tick is due."""
@@ -115,17 +126,28 @@ class TemplateApp():
 
     def touch(self, event):
         """Notify the application of a touchscreen touch event."""
-        draw = wasp.watch.drawable
-        draw.string('({}, {})'.format(
-                event[1], event[2]), 0, 108, width=240)
+        self._update('({}, {})'.format(event[1], event[2]))
 
     def _draw(self):
         """Draw the display from scratch."""
         draw = wasp.watch.drawable
-        draw.fill()
-        draw.string(self.NAME, 0, 6, width=240)
-        self._update()
+        draw.fill(0)
+        for y in _TOPS:
+            draw.rounded_rect(cards.MARGIN, y, cards.SPAN, _CARD_H, cards.COLOR)
+        self._label(self.NAME, _TOPS[0])
+        self._update('')
 
-    def _update(self):
-        """Update the dynamic parts of the application display."""
-        pass
+    def _update(self, text):
+        """Show text on the lower card."""
+        self._label(text, _TOPS[1])
+
+    def _label(self, text, y):
+        """Draw text in white, centred on the card whose top edge is at y."""
+        draw = wasp.watch.drawable
+        # Matching the card colour keeps the glyph background invisible.
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        draw.set_font(fonts.sans24)
+        # Padding with width= stays inside the straight part of the card.
+        draw.string(text, cards.MARGIN + _INSET,
+                    y + (_CARD_H - fonts.sans24.height()) // 2,
+                    width=cards.SPAN - 2 * _INSET)

@@ -5,6 +5,9 @@
 
 An application to find a phone connected via Gadgetbridge.
 
+The top card names the app and the bottom card rings the phone, filled with
+the accent while it rings.
+
     .. figure:: apps/phone_finder/screenshot.png
         :width: 179
 
@@ -13,9 +16,14 @@ An application to find a phone connected via Gadgetbridge.
 """
 
 import wasp
+import cards
 import fonts
 import widgets
 from gadgetbridge import send_cmd
+
+# A title card above the ring card.
+_CARD_H = cards.size(2)
+_TITLE_Y, _RING_Y = cards.edges((_CARD_H, _CARD_H))
 
 # 1-bit RLE, 32x32, generated from apps/phone_finder/icon.png, 113 bytes
 icon = (
@@ -42,20 +50,16 @@ class PhoneFinderApp():
 
     def foreground(self):
         """Activate the application."""
-        self.ring_btn = widgets.ToggleButton(20, 120, 200, 60, 'Ring')
+        self.ring_btn = widgets.ToggleButton(cards.MARGIN, _RING_Y, cards.SPAN,
+                                             _CARD_H, 'Ring')
 
         self._draw()
         wasp.system.request_event(wasp.EventMask.TOUCH)
-        wasp.system.request_tick(1000)
 
     def background(self):
         """De-activate the application."""
         self.ring_btn = None
         del self.ring_btn
-
-    def tick(self, ticks):
-        """Notify the application that its periodic tick is due."""
-        wasp.system.bar.update()
 
     def touch(self, event):
         """Notify the application of a touchscreen touch event."""
@@ -68,11 +72,13 @@ class PhoneFinderApp():
     def _draw(self):
         """Draw the display from scratch."""
         draw = wasp.watch.drawable
-        draw.fill()
-        sbar = wasp.system.bar
-        sbar.clock = True
-        sbar.draw()
-
+        draw.fill(0)
+        draw.rounded_rect(cards.MARGIN, _TITLE_Y, cards.SPAN, _CARD_H,
+                          cards.COLOR)
+        bright = wasp.system.theme('bright')
+        draw.rleblit(icon, (104, _TITLE_Y + 18), bright, cards.COLOR)
+        draw.set_color(bright, cards.COLOR)
         draw.set_font(fonts.sans24)
-        draw.string('Find phone', 60, 70, width=120)
+        draw.string('Find phone', cards.MARGIN + 12, _TITLE_Y + 62,
+                    width=cards.SPAN - 24)
         self.ring_btn.draw()

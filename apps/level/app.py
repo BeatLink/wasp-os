@@ -13,14 +13,17 @@ button while ensuring the watch is stationary.
 """
 
 import wasp
+import cards
 import watch
 import widgets
 from micropython import const
 
-_X_MAX = const(240)
-_Y_MAX = const(240)
-_X_CENTER = const(120)
-_Y_CENTER = const(120)
+_CENTER = const(120)
+# The bubble stays clear of the rounded corners of the card it moves on.
+_REACH = cards.SPAN // 2 - 16
+# The menu is three stacked cards.
+_ROW_H = cards.size(3)
+_ROWS = cards.edges((_ROW_H,) * 3)
 
 class LevelApp():
     NAME = "Level"
@@ -37,9 +40,12 @@ class LevelApp():
         self.old_xy = (0,0)
         self.calibration = (0,0)
         self.prompt = False
-        self.calibrate = widgets.Button(20, 20, 200, 60, 'Calibrate')
-        self.reset = widgets.Button(20, 90, 200, 60, 'Reset')
-        self.cancel = widgets.Button(20, 160, 200, 60, 'Cancel')
+        self.calibrate = widgets.Button(cards.MARGIN, _ROWS[0], cards.SPAN,
+                                        _ROW_H, 'Calibrate')
+        self.reset = widgets.Button(cards.MARGIN, _ROWS[1], cards.SPAN,
+                                    _ROW_H, 'Reset')
+        self.cancel = widgets.Button(cards.MARGIN, _ROWS[2], cards.SPAN,
+                                     _ROW_H, 'Cancel')
 
     def foreground(self):
         self.prompt = False # in case the watch went to sleep with prompt on
@@ -48,26 +54,32 @@ class LevelApp():
         wasp.system.request_tick(125)
 
     def _draw(self):
-        wasp.watch.drawable.fill()
+        draw = wasp.watch.drawable
+        draw.fill(0)
+        draw.rounded_rect(cards.MARGIN, cards.MARGIN, cards.SPAN, cards.SPAN,
+                          cards.COLOR)
         self._update()
 
     def _update(self):
         if not self.prompt:
             draw = wasp.watch.drawable
             # Clear the old bubble
-            draw.fill(None, self.old_xy[0] - 3 + _X_CENTER, self.old_xy[1] - 3 + _Y_CENTER, 6, 6)
-            # draw guide lines
-            draw.line(0, _Y_CENTER, _X_MAX, _Y_CENTER, color = wasp.system.theme('mid'))
-            draw.line(_X_CENTER, 0, _X_CENTER, _Y_MAX, color = wasp.system.theme('mid'))
+            draw.fill(cards.COLOR, self.old_xy[0] - 3 + _CENTER,
+                      self.old_xy[1] - 3 + _CENTER, 6, 6)
+            # Draw the guide lines inside the straight part of the card.
+            mid = wasp.system.theme('mid')
+            draw.fill(mid, cards.MARGIN + 12, _CENTER, cards.SPAN - 24, 1)
+            draw.fill(mid, _CENTER, cards.MARGIN + 12, 1, cards.SPAN - 24)
             (new_x, new_y, _) = watch.accel.accel_xyz()
             # We clamp and scale the values down a bit to make them fit better,
             # and apply the calibration.
             # The scaling factor is negative because when gravity pulls in one
             # direction we want the bubble to go the other direction.
-            new_x = min(_X_CENTER, max(-_X_CENTER, (new_x-self.calibration[0])//-3))
-            new_y = min(_Y_CENTER, max(-_Y_CENTER, (new_y-self.calibration[1])//-3))
+            new_x = min(_REACH, max(-_REACH, (new_x-self.calibration[0])//-3))
+            new_y = min(_REACH, max(-_REACH, (new_y-self.calibration[1])//-3))
             # Draw the new bubble
-            draw.fill(wasp.system.theme('bright'), new_x - 3 + _X_CENTER, new_y - 3 + _Y_CENTER, 6, 6)
+            draw.fill(wasp.system.theme('bright'), new_x - 3 + _CENTER,
+                      new_y - 3 + _CENTER, 6, 6)
             self.old_xy = (new_x, new_y)
 
     def tick(self, ticks):
@@ -85,14 +97,12 @@ class LevelApp():
             #if self.cancel.touch(event):
             #    pass
 
-            # reset the color (buttons set it to blue) and disable prompt
-            wasp.watch.drawable.set_color(wasp.system.theme('bright'))
             self.prompt = False
             self._draw()
         else:
             # Draw menu
             self.prompt = True
-            wasp.watch.drawable.fill()
+            wasp.watch.drawable.fill(0)
             self.calibrate.draw()
             self.reset.draw()
             self.cancel.draw()

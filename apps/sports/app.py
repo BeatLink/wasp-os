@@ -6,10 +6,14 @@
 
 A combined stopwatch and step counter.
 
+The time runs on the top card and the steps taken since it started on the
+card below. The button starts and stops it, and a tap clears it once stopped.
+
 .. figure:: apps/sports/screenshot.png
     :width: 179
 """
 import wasp
+import cards
 import fonts
 
 # 1-bit RLE, 32x32, generated from apps/sports/icon.png, 91 bytes
@@ -23,18 +27,25 @@ icon = (
     b'\x1c\x04\x1b\x05\x1b\x04\x1c\x04\x1d\x02\x0c'
 )
 
+# Two stacked cards: the time above the steps.
+_CARD_H = cards.size(2)
+_TIME_Y, _STEPS_Y = cards.edges((_CARD_H, _CARD_H))
+# Text keeps clear of the rounded corners of its card.
+_TEXT_X = cards.MARGIN + 12
+_TEXT_W = cards.SPAN - 24
+
 class SportsApp():
     """Sports timer application."""
     NAME = 'Sports'
     ICON = icon
 
     def __init__(self):
-        self._timer = wasp.widgets.Stopwatch(120-36)
+        self._timer = wasp.widgets.Stopwatch(_TIME_Y + (_CARD_H - 36) // 2,
+                                             cards.COLOR)
         self._reset()
 
     def foreground(self):
         """Activate the application."""
-        wasp.system.bar.clock = True
         self._draw()
         wasp.system.request_tick(97)
         wasp.system.request_event(wasp.EventMask.TOUCH | wasp.EventMask.BUTTON)
@@ -85,13 +96,17 @@ class SportsApp():
     def _draw(self):
         """Draw the display from scratch."""
         draw = wasp.watch.drawable
-        draw.fill()
-
-        wasp.system.bar.draw()
+        draw.fill(0)
+        for y in (_TIME_Y, _STEPS_Y):
+            draw.rounded_rect(cards.MARGIN, y, cards.SPAN, _CARD_H,
+                              cards.COLOR)
+        draw.set_font(fonts.sans18)
+        draw.set_color(wasp.system.theme('mid'), cards.COLOR)
+        draw.string('steps', _TEXT_X, _STEPS_Y + _CARD_H - 34, width=_TEXT_W)
         self._timer.draw()
+        self._draw_steps()
 
     def _update(self):
-        wasp.system.bar.update()
         self._timer.update()
 
         if self._timer.started:
@@ -103,7 +118,10 @@ class SportsApp():
             redraw = True
 
         if redraw:
-            draw = wasp.watch.drawable
-            draw.set_font(fonts.sans36)
-            draw.set_color(draw.lighten(wasp.system.theme('spot1'), wasp.system.theme('contrast')))
-            draw.string(str(self._steps), 0, 170, 228, True)
+            self._draw_steps()
+
+    def _draw_steps(self):
+        draw = wasp.watch.drawable
+        draw.set_font(fonts.sans36)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        draw.string(str(self._steps), _TEXT_X, _STEPS_Y + 24, width=_TEXT_W)
