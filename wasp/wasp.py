@@ -810,7 +810,7 @@ class Manager():
                     watch.vibrator.pulse()
 
         elif direction == EventType.HOME or direction == EventType.BACK:
-            if self.app != app_list[0]:
+            if current is not app_list[0]:
                 self.switch(app_list[0])
             else:
                 self.sleep()
@@ -938,7 +938,7 @@ class Manager():
             if bool(event_mask & EventMask.NEXT) and not self.app.swipe(event):
                 # The app has already handled this one (mark as no event)
                 event[0] = 0
-            elif self.app == self.quick_ring[0] and len(self.notifications):
+            elif (self.app_entry or self.app) is self.quick_ring[0] and len(self.notifications):
                 event[0] = EventType.DOWN
             elif isinstance(self.app, NotificationApp):
                 event[0] = EventType.UP
