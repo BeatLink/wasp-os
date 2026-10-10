@@ -17,38 +17,54 @@ from micropython import const
 TICK_PERIOD = const(6 * 60)
 DUMP_LENGTH = const(30)
 DUMP_PERIOD = const(DUMP_LENGTH * TICK_PERIOD)
+# Tick periods in a day.
+_SLOTS = const(24 * 60 * 60 // TICK_PERIOD)
+
+
+def _midnight(walltime):
+    """The time the day holding walltime, a time.localtime() tuple, began."""
+    return int(time.mktime((walltime[0], walltime[1], walltime[2],
+                            0, 0, 0, 0, 0, 0)))
 
 class StepIterator:
-    def __init__(self, fname, data=None):
+    """Step counts for one day, one per tick period, from the log and from RAM.
+
+    :param fname: The day's log file, or None if nothing is saved yet
+    :param data:  Counts still held in RAM, or None
+    :param start: The tick of the day the counts in RAM begin at
+    """
+    def __init__(self, fname, data=None, start=0):
         self._fname = fname
         self._f = None
         self._d = data
+        self._start = start
 
     def __del__(self):
         self.close()
 
     def __iter__(self):
         self.close()
-        self._f = open(self._fname, 'rb')
+        if self._fname:
+            self._f = open(self._fname, 'rb')
         self._c = 0
         return self
 
     def __next__(self):
-        self._c += 1
-        if self._c > (24*60*60) // TICK_PERIOD:
+        c = self._c
+        if c >= _SLOTS:
             raise StopIteration
+        self._c = c + 1
 
-        if self._f:
+        # The file holds the dumps already written, and RAM the one after them.
+        d = self._d
+        if self._f and (d is None or c < self._start):
             spl = self._f.read(2)
-            if spl:
+            if len(spl) == 2:
                 return spl[0] + (spl[1] << 8)
             self.close()
-            self._i = 0
 
-        if self._d and self._i < len(self._d):
-            i = self._i
-            self._i += 1
-            return self._d[i]
+        if d and self._start <= c < self._start + len(d):
+            return d[c - self._start]
 
         return 0
 
@@ -81,8 +97,14 @@ class StepLogger:
         """
         t = self._t
 
-        # Work out where we are in the dump period
-        i = t % DUMP_PERIOD // TICK_PERIOD
+        # Work out which period of the day this is, and where that falls in
+        # the dump period. Both count from midnight.
+        walltime = time.localtime(t)
+        yyyy = walltime[0]
+        mm = walltime[1]
+        dd = walltime[2]
+        slot = (t - _midnight(walltime)) // TICK_PERIOD
+        i = slot % DUMP_LENGTH
 
         # Get the current step count and record it
         steps = wasp.watch.accel.steps
@@ -91,6 +113,11 @@ class StepLogger:
         self._data[i] = delta if delta >= 0 else steps
         self._steps = steps
 
+        # The next period starts a new day, so the count starts again from zero.
+        if slot >= _SLOTS - 1:
+            wasp.watch.accel.steps = 0
+            self._steps = 0
+
         # Queue the next tick
         wasp.system.set_alarm(t + TICK_PERIOD, self._tick)
         self._t += TICK_PERIOD
@@ -98,18 +125,8 @@ class StepLogger:
         if i < (DUMP_LENGTH-1):
             return
 
-        # Record the data in the flash
-        walltime = time.localtime(t)
-        yyyy = walltime[0]
-        mm = walltime[1]
-        dd = walltime[2]
-
-        # Find when (in seconds) "today" started
-        then = int(time.mktime((yyyy, mm, dd, 0, 0, 0, 0, 0, 0)))
-        elapsed = t - then
-
         # Work out how dumps we expect to find in today's dumpfile
-        dump_num = elapsed // DUMP_PERIOD
+        dump_num = slot // DUMP_LENGTH
 
         # Update the log data
         try:
@@ -120,9 +137,12 @@ class StepLogger:
         offset = dump_num * DUMP_LENGTH * 2
         try:
             sz = os.stat(fname)[6]
+            # Not append mode, which would ignore the seek and add a dump
+            # written again after a restart to the end of the file.
+            f = open(fname, 'r+b')
         except:
             sz = 0
-        f = open(fname, 'ab')
+            f = open(fname, 'wb')
         # This is a portable (between real Python and MicroPython) way to
         # grow the file to the right size.
         f.seek(min(sz, offset))
@@ -137,6 +157,10 @@ class StepLogger:
             data[i] = 0
 
     def data(self, t):
+        """Return the step counts for the day holding t, or None if there are none.
+
+        :param t: A time, as seconds or as a time.localtime() tuple
+        """
         try:
             yyyy = t[0]
         except:
@@ -149,18 +173,19 @@ class StepLogger:
         try:
             os.stat(fname)
         except:
-            return None
+            fname = None
 
-        # Record the data in the flash
         now = time.localtime(self._t)
-        if now[:3] == t[:3]:
-            latest = self._data
+        if now[:3] != t[:3]:
+            return StepIterator(fname) if fname else None
 
-            # Work out where we are in the dump period and update
-            # with the latest counts
-            i = self._t % DUMP_PERIOD // TICK_PERIOD
-            latest[i] = wasp.watch.accel.steps - self._steps
-        else:
-            latest = None
-
-        return StepIterator(fname, latest)
+        # Today also has the counts still in RAM, with the period in progress
+        # filled in from the counter. A copy is taken, so the next tick is
+        # not disturbed.
+        latest = array.array('H', self._data)
+        slot = (self._t - _midnight(now)) // TICK_PERIOD
+        i = slot % DUMP_LENGTH
+        steps = wasp.watch.accel.steps
+        delta = steps - self._steps
+        latest[i] = delta if delta >= 0 else steps
+        return StepIterator(fname, latest, slot - i)

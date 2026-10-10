@@ -44,45 +44,16 @@ class StepCounterApp():
     NAME = 'Steps'
     ICON = icons.steps
 
-    def __init__(self):
-        # The sensor is started when the app is registered, not here: a
-        # reset zeroes the step count, and this runs every time the app is
-        # opened.
-        self._wake = 0
-
     def foreground(self):
-        """Cancel the alarm and draw the application.
+        """Draw the application.
 
-        Cancelling the alarm has two effects. Firstly it ensures the
-        step count won't change whilst we are watching it and, secondly
-        it ensures that if the time of day has been set to a value in
-        the past that we reconfigure the alarm.
-
-        This does in the side effect that if the application of open at
-        midnight then the reset doesn't happen for that day.
+        The count is reset at midnight by the step logger, which runs
+        whether or not this app has been opened.
         """
-        wasp.system.cancel_alarm(self._wake, self._reset)
         self._page = -1
         self._draw()
         wasp.system.request_event(wasp.EventMask.SWIPE_UPDOWN)
         wasp.system.request_tick(1000)
-
-    def background(self):
-        """Set an alarm to trigger at midnight and reset the counter."""
-        now = watch.rtc.get_localtime()
-        yyyy = now[0]
-        mm = now[1]
-        dd = now[2]
-        then = (yyyy, mm, dd+1, 0, 0, 0, 0, 0, 0)
-
-        self._wake = time.mktime(then)
-        wasp.system.set_alarm(self._wake, self._reset)
-
-    def _reset(self):
-        """"Reset the step counter and re-arm the alarm."""
-        watch.accel.steps = 0
-        self._wake += 24 * 60 * 60
-        wasp.system.set_alarm(self._wake, self._reset)
 
     def swipe(self, event):
         if event[0] == wasp.EventType.DOWN:
@@ -181,8 +152,7 @@ class StepCounterApp():
 
         total = 0
         for x, d in enumerate(data):
-            if d == 0 or x < 2:
-                # TODO: the x < 2 conceals BUGZ
+            if d == 0:
                 continue
             total += d
             d = d // 4
