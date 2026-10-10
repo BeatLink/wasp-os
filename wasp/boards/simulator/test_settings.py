@@ -15,12 +15,12 @@ def system(tmp_path, monkeypatch):
         system.secondary_init()
     path = tmp_path / 'settings.json'
     saved = (system._brightness, system._notifylevel, system._nfylev_ms, system._units,
-             system._theme, list(system.quick_ring))
+             system._theme, list(system.quick_ring), system._blank_after)
     monkeypatch.setattr(system, 'settings_file', str(path))
     monkeypatch.setattr(system, '_settings_text', system._settings())
     yield system, path
     (system._brightness, system._notifylevel, system._nfylev_ms, system._units,
-     system._theme, ring) = saved
+     system._theme, ring, system._blank_after) = saved
     system.quick_ring[:] = ring
 
 
@@ -80,3 +80,37 @@ def test_a_damaged_file_leaves_the_defaults(system):
     manager = restart(path)
 
     assert (manager.brightness, manager.units) == (2, 'Metric')
+
+
+def test_the_screen_timeout_is_kept(system):
+    (system, path) = system
+    system.blank_after = 30
+
+    manager = restart(path)
+
+    assert manager.blank_after == 30
+
+
+def test_a_screen_timeout_not_offered_is_ignored(system):
+    (system, path) = system
+    path.write_text(json.dumps({'blank_after': 7}))
+
+    manager = restart(path)
+
+    assert manager.blank_after == 15
+
+
+def test_the_settings_app_cycles_the_screen_timeout(system):
+    (system, path) = system
+    from settings import SettingsApp
+    app = SettingsApp()
+    system.switch(app)
+    app._sett_index = app._settings.index('Screen Timeout')
+    app._draw()
+    before = system.blank_after
+
+    app.touch((wasp.EventType.TOUCH, 120, 110))
+
+    choices = wasp.BLANK_AFTER
+    assert system.blank_after == choices[(choices.index(before) + 1) % len(choices)]
+    system.switch(system.quick_ring[0])
