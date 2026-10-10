@@ -86,7 +86,9 @@ class StepLogger:
 
         # Get the current step count and record it
         steps = wasp.watch.accel.steps
-        self._data[i] = steps - self._steps
+        # A count lower than the last means the counter was reset, so every step it holds is new.
+        delta = steps - self._steps
+        self._data[i] = delta if delta >= 0 else steps
         self._steps = steps
 
         # Queue the next tick
