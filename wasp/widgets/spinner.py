@@ -11,6 +11,7 @@ import wasp
 import watch
 
 from micropython import const
+from widgets.page import clip
 
 # Corner radius of a card, which the value is kept clear of.
 _RADIUS = const(12)
@@ -31,35 +32,52 @@ class Spinner():
         size = (h - 2 * cards.GAP) // 3
         return (size, (h - size) // 2)
 
-    def draw(self):
-        """Draw the spinner."""
+    def draw(self, top=0, height=240, sy=0):
+        """Draw the spinner, or the part of it inside a band of rows.
+
+        :param top:    First page row of the band
+        :param height: How many rows the band covers
+        :param sy:     Add a page row to this to get its screen row
+        """
         draw = watch.drawable
         im = self._im
         (size, pitch) = self._card()
-        for i in range(3):
-            draw.rounded_rect(im[0], im[1] + i * pitch, im[6], size,
-                              cards.COLOR)
+        th = fonts.sans28.height()
         draw.set_color(wasp.system.theme('bright'), cards.COLOR)
         draw.set_font(fonts.sans28)
-        y = im[1] + (size - fonts.sans28.height()) // 2
-        draw.string('+', im[0], y, width=im[6])
-        draw.string('-', im[0], y + 2 * pitch, width=im[6])
-        self.update()
+        for i in range(3):
+            tile = im[1] + i * pitch
+            (first, rows) = clip(top, height, tile, size)
+            if not rows:
+                continue
+            draw.rounded_rect(im[0], sy + tile, im[6], size, cards.COLOR,
+                              first=first, rows=rows)
+            if i == 1:
+                continue
+            ty = tile + (size - th) // 2
+            (first, rows) = clip(top, height, ty, th)
+            if rows:
+                draw.string('+' if i == 0 else '-', im[0], sy + ty,
+                            width=im[6], first=first, rows=rows)
+        self.update(top, height, sy)
 
-    def update(self):
-        """Update the spinner value."""
+    def update(self, top=0, height=240, sy=0):
+        """Update the spinner value, or the part of it inside a band of rows."""
         draw = watch.drawable
         im = self._im
         (size, pitch) = self._card()
+        ty = im[1] + pitch + (size - fonts.sans28.height()) // 2
+        (first, rows) = clip(top, height, ty, fonts.sans28.height())
+        if not rows:
+            return
         draw.set_color(wasp.system.theme('bright'), cards.COLOR)
         draw.set_font(fonts.sans28)
         s = str(self.value)
         if len(s) < im[4]:
             s = '0' * (im[4] - len(s)) + s
         # Keep the padding inside the straight part of the card.
-        draw.string(s, im[0] + _RADIUS,
-                    im[1] + pitch + (size - fonts.sans28.height()) // 2,
-                    width=im[6] - 2 * _RADIUS)
+        draw.string(s, im[0] + _RADIUS, sy + ty, width=im[6] - 2 * _RADIUS,
+                    first=first, rows=rows)
 
     def touch(self, event):
         x = event[1]

@@ -115,13 +115,50 @@ def _page_apps():
         editor.page = 0
         editor.step = step
         apps[name] = editor
+
+    from apps.system.pager import PagerApp
+    pager = PagerApp('A title\n\n' + 'Words that wrap across the card. ' * 12)
+    pager._redraw()
+    pager._page = 1
+    apps['pager'] = pager
+
+    import array
+    from apps.system.step_counter import StepCounterApp
+    today = StepCounterApp()
+    today._page = -1
+    today._count = 4790
+    apps['steps'] = today
+    graph = StepCounterApp()
+    graph._page = 1
+    graph._date = '09-10'
+    graph._data = array.array('H', ((i * 37) % 900 for i in range(240)))
+    graph._total = sum(graph._data)
+    apps['steps-graph'] = graph
+
+    from apps.system.settings import SettingsApp
+    for (i, name) in enumerate(SettingsApp()._settings):
+        settings = SettingsApp()
+        settings._sett_index = i
+        settings._enter()
+        apps['settings-' + name] = settings
     return apps
 
-_PAGES = ('grid', 'list', 'alarm', 'alarm-time', 'alarm-days', 'alarm-save')
+class _Counter:
+    """An accelerometer whose count stays put, so two renders show the same."""
+    steps = 4790
+
+@pytest.fixture
+def steady_steps(monkeypatch):
+    monkeypatch.setattr(wasp.watch, 'accel', _Counter())
+
+_SETTINGS = ('Brightness', 'Notification Level', 'Screen Timeout', 'Wake',
+             'Time', 'Time Format', 'Date', 'Units', 'Step Goal')
+_PAGES = ('grid', 'list', 'alarm', 'alarm-time', 'alarm-days', 'alarm-save',
+          'pager', 'steps', 'steps-graph') + tuple('settings-' + s for s in _SETTINGS)
 
 @pytest.mark.parametrize("name", _PAGES)
 @pytest.mark.parametrize("step", (8, 16))
-def test_a_banded_page_matches_a_whole_one(draw, name, step):
+def test_a_banded_page_matches_a_whole_one(draw, steady_steps, name, step):
     app = _page_apps()[name]
 
     draw.fill(0)
@@ -139,7 +176,7 @@ def test_a_banded_page_matches_a_whole_one(draw, name, step):
 
 
 @pytest.mark.parametrize("name", _PAGES)
-def test_a_banded_page_covers_every_pixel(draw, name):
+def test_a_banded_page_covers_every_pixel(draw, steady_steps, name):
     """A slide draws over old rows, so each band must paint all of itself."""
     app = _page_apps()[name]
 

@@ -30,7 +30,7 @@ import cards
 import fonts
 import icons
 
-from widgets.page import draw_indicator
+from widgets.page import clip, clear_around, draw_indicator, scroll_in
 
 _MARGIN = cards.MARGIN
 _WIDTH = cards.SPAN
@@ -63,6 +63,8 @@ _LEVELS = ('Low', 'Mid', 'High')
 _NOTIFY_LEVELS = ('Silent', 'Mid', 'High')
 _UNITS = ('Metric', 'Imperial')
 _FORMATS = ('12 hour', '24 hour')
+# A band covering the whole screen, for drawing outside a slide.
+_WHOLE = (0, 240, 0)
 
 class SettingsApp():
     """Settings application."""
@@ -185,66 +187,112 @@ class SettingsApp():
                 wasp.watch.rtc.set_localtime(now)
 
     def swipe(self, event):
-        """Move to the next setting, or back to the one before."""
+        """Slide in the next setting, or the one before."""
         if event[0] == wasp.EventType.UP:
             self._sett_index += 1
-            self._draw()
         elif event[0] == wasp.EventType.DOWN:
             self._sett_index -= 1
-            self._draw()
+        else:
+            return
+        self._enter()
+        scroll_in(self.draw_rows, up=event[0] == wasp.EventType.UP)
 
-    def _label(self, text, x, y, w, color=None):
-        """Draw a card holding one line of text."""
-        draw = wasp.watch.drawable
-        if color is None:
-            color = cards.COLOR
-        draw.rounded_rect(x, y, w, _ROW_H, color)
-        draw.string(text, x, y + _TEXT_Y, width=w)
-
-    def _draw(self):
-        """Redraw the display from scratch."""
-        draw = wasp.watch.drawable
-        mute = wasp.watch.display.mute
-        index = self._sett_index % len(self._settings)
-        s = self._settings[index]
+    def _enter(self):
+        """Make the setting at the current index the one shown."""
+        s = self._settings[self._sett_index % len(self._settings)]
         self._current_setting = s
-        mute(True)
-        draw.fill(0)
-        draw.set_font(fonts.sans24)
-        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
         if s == 'Time':
             now = wasp.watch.rtc.get_localtime()
             self._HH.value = now[3]
             self._MM.value = now[4]
-            self._label('Hour', _HALVES[0], _ROW_TOPS[0], _HALF)
-            self._label('Minute', _HALVES[1], _ROW_TOPS[0], _HALF)
-            self._HH.draw()
-            self._MM.draw()
         elif s == 'Date':
             now = wasp.watch.rtc.get_localtime()
             self._yy.value = now[0] - 2000
             self._mm.value = now[1]
             self._dd.value = now[2]
-            for (i, name) in enumerate(('Day', 'Month', 'Year')):
-                self._label(name, _THIRDS[i], _ROW_TOPS[0], _THIRD)
-            self._dd.draw()
-            self._mm.draw()
-            self._yy.draw()
+
+    def _label(self, text, x, y, w, color=None, band=_WHOLE):
+        """Draw the part of a card holding one line of text inside a band.
+
+        :param band: First page row, row count and screen offset of the band
+        """
+        (top, height, sy) = band
+        (first, rows) = clip(top, height, y, _ROW_H)
+        if not rows:
+            return
+        draw = wasp.watch.drawable
+        if color is None:
+            color = cards.COLOR
+        draw.rounded_rect(x, sy + y, w, _ROW_H, color, first=first, rows=rows)
+        (first, rows) = clip(top, height, y + _TEXT_Y,
+                             draw.bounding_box(text)[1])
+        if rows:
+            draw.string(text, x, sy + y + _TEXT_Y, width=w,
+                        first=first, rows=rows)
+
+    def _blank(self, x, y, w, band):
+        """Clear a row's worth of a cell that holds no card."""
+        (top, height, sy) = band
+        (first, rows) = clip(top, height, y, _ROW_H)
+        if rows:
+            wasp.watch.drawable.fill(0, x, sy + y + first, w, rows)
+
+    def _draw(self):
+        """Redraw the display from scratch."""
+        display = wasp.watch.display
+        display.mute(True)
+        # A page that slid in left the display scrolled, so put it back first.
+        display.scroll(0)
+        self._enter()
+        self.draw_rows(0, 0, 240)
+        display.mute(False)
+
+    def draw_rows(self, top, y, height):
+        """Draw the page rows from top to top+height at screen row y."""
+        draw = wasp.watch.drawable
+        s = self._current_setting
+        band = (top, height, y - top)
+        choices = self._choices()
+
+        # Blank the gaps around the narrowest columns the page uses; a wider
+        # card drawn afterwards covers the gaps it spans.
+        if s == 'Date':
+            (lefts, width) = (_THIRDS, _THIRD)
+        elif s in ('Time', 'Step Goal') or (choices and len(choices) > 3):
+            (lefts, width) = (_HALVES, _HALF)
         else:
-            self._label(s, _MARGIN, _ROW_TOPS[0], _WIDTH)
+            (lefts, width) = ((_MARGIN,), _WIDTH)
+        clear_around(y, height, top, _ROW_TOPS, _ROW_H, lefts, width)
+
+        draw.set_font(fonts.sans24)
+        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
+        if s == 'Time':
+            self._label('Hour', _HALVES[0], _ROW_TOPS[0], _HALF, band=band)
+            self._label('Minute', _HALVES[1], _ROW_TOPS[0], _HALF, band=band)
+            self._HH.draw(*band)
+            self._MM.draw(*band)
+        elif s == 'Date':
+            for (i, name) in enumerate(('Day', 'Month', 'Year')):
+                self._label(name, _THIRDS[i], _ROW_TOPS[0], _THIRD, band=band)
+            self._dd.draw(*band)
+            self._mm.draw(*band)
+            self._yy.draw(*band)
+        else:
+            self._label(s, _MARGIN, _ROW_TOPS[0], _WIDTH, band=band)
             if s == 'Step Goal':
                 draw.set_font(fonts.sans28)
-                self._label('-', _HALVES[0], _ROW_TOPS[3], _HALF)
-                self._label('+', _HALVES[1], _ROW_TOPS[3], _HALF)
-                self._draw_goal()
+                self._label('-', _HALVES[0], _ROW_TOPS[3], _HALF, band=band)
+                self._label('+', _HALVES[1], _ROW_TOPS[3], _HALF, band=band)
+                self._draw_goal(band)
             elif s == 'Wake':
-                self._draw_wakes()
+                self._draw_wakes(band)
+                self._blank(_MARGIN, _ROW_TOPS[3], _WIDTH, band)
             else:
-                self._draw_choices()
-        draw_indicator(index, len(self._settings))
-        mute(False)
+                self._draw_choices(band)
+        draw_indicator(self._sett_index % len(self._settings),
+                       len(self._settings), top, y, height)
 
-    def _draw_choices(self):
+    def _draw_choices(self, band=_WHOLE):
         """Draw a card per value, filling the chosen one with the accent."""
         draw = wasp.watch.drawable
         choices = self._choices()
@@ -259,9 +307,15 @@ class SettingsApp():
             else:
                 color = cards.COLOR
                 draw.set_color(wasp.system.theme('mid'), color)
-            self._label(text, x, y, w, color)
+            self._label(text, x, y, w, color, band)
 
-    def _draw_wakes(self):
+        # Cells past the last value hold no card.
+        cells = 3 if count <= 3 else 6
+        for i in range(count, cells):
+            (x, y, w) = self._cell(i, count)
+            self._blank(x, y, w, band)
+
+    def _draw_wakes(self, band=_WHOLE):
         """Draw a card per wake gesture, filled with the accent while it is on."""
         draw = wasp.watch.drawable
         draw.set_font(fonts.sans24)
@@ -273,17 +327,25 @@ class SettingsApp():
             else:
                 color = cards.COLOR
                 draw.set_color(wasp.system.theme('mid'), color)
-            self._label(text, _MARGIN, _ROW_TOPS[1 + i], _WIDTH, color)
+            self._label(text, _MARGIN, _ROW_TOPS[1 + i], _WIDTH, color, band)
 
-    def _draw_goal(self):
+    def _draw_goal(self, band=_WHOLE):
         """Draw the card showing the step goal."""
+        (top, height, sy) = band
+        (first, rows) = clip(top, height, _BODY_Y, _VALUE_H)
+        if not rows:
+            return
         draw = wasp.watch.drawable
-        draw.rounded_rect(_MARGIN, _BODY_Y, _WIDTH, _VALUE_H, cards.COLOR)
-        draw.set_color(wasp.system.theme('bright'), cards.COLOR)
-        draw.set_font(fonts.sans28)
-        draw.string('{}'.format(wasp.system.step_goal), _MARGIN,
-                    _BODY_Y + _VALUE_H // 2 - 32, width=_WIDTH)
-        draw.set_color(wasp.system.theme('mid'), cards.COLOR)
-        draw.set_font(fonts.sans18)
-        draw.string('steps a day', _MARGIN, _BODY_Y + _VALUE_H // 2 + 10,
-                    width=_WIDTH)
+        draw.rounded_rect(_MARGIN, sy + _BODY_Y, _WIDTH, _VALUE_H, cards.COLOR,
+                          first=first, rows=rows)
+        for (text, font, ty, fg) in (
+                ('{}'.format(wasp.system.step_goal), fonts.sans28,
+                 _BODY_Y + _VALUE_H // 2 - 32, 'bright'),
+                ('steps a day', fonts.sans18,
+                 _BODY_Y + _VALUE_H // 2 + 10, 'mid')):
+            (first, rows) = clip(top, height, ty, font.height())
+            if rows:
+                draw.set_color(wasp.system.theme(fg), cards.COLOR)
+                draw.set_font(font)
+                draw.string(text, _MARGIN, sy + ty, width=_WIDTH,
+                            first=first, rows=rows)

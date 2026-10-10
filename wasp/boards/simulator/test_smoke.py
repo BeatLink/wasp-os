@@ -187,7 +187,7 @@ def test_the_step_graph_survives_a_watch_with_no_step_counter(system):
     try:
         # A watch whose step counter never started has no logger at all,
         # which the graph page has to cope with rather than raise.
-        app._update_graph()
+        app._draw()
     finally:
         system.steps = steps
 
