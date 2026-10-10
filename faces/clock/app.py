@@ -12,6 +12,7 @@ Shows a time (as HH:MM) together with a battery meter and the date.
 
 import wasp
 
+import fonts
 import fonts.clock as digits
 
 DIGITS = (
@@ -104,10 +105,19 @@ class ClockApp():
         # Draw the changeable parts of the watch face
         draw.blit(DIGITS[now[4]  % 10], 4*48, 80, fg=hi)
         draw.blit(DIGITS[now[4] // 10], 3*48, 80, fg=lo)
-        draw.blit(DIGITS[now[3]  % 10], 1*48, 80, fg=hi)
-        draw.blit(DIGITS[now[3] // 10], 0*48, 80, fg=lo)
+        hour = wasp.system.display_hour(now[3])
+        draw.blit(DIGITS[hour  % 10], 1*48, 80, fg=hi)
+        if wasp.system.clock_24h or hour >= 10:
+            draw.blit(DIGITS[hour // 10], 0*48, 80, fg=lo)
+        else:
+            # A 12 hour clock shows 9:30, not 09:30.
+            draw.fill(0, 0, 80, 48, DIGITS[0][2])
         draw.set_color(hi)
+        draw.set_font(fonts.sans24)
         draw.string(self._day_string(now), 0, 180, width=240)
+        if not wasp.system.clock_24h:
+            draw.set_color(mid)
+            draw.string('PM' if now[3] >= 12 else 'AM', 4*48, 52, width=48)
 
         # Record the minute that is currently being displayed
         self._min = now[4]
