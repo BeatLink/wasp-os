@@ -15,12 +15,12 @@ def system(tmp_path, monkeypatch):
         system.secondary_init()
     path = tmp_path / 'settings.json'
     saved = (system._brightness, system._notifylevel, system._nfylev_ms, system._units,
-             system._theme, list(system.quick_ring), system._blank_after, system._clock_24h)
+             system._theme, list(system.quick_ring), system._blank_after, system._clock_24h, system._step_goal)
     monkeypatch.setattr(system, 'settings_file', str(path))
     monkeypatch.setattr(system, '_settings_text', system._settings())
     yield system, path
     (system._brightness, system._notifylevel, system._nfylev_ms, system._units,
-     system._theme, ring, system._blank_after, system._clock_24h) = saved
+     system._theme, ring, system._blank_after, system._clock_24h, system._step_goal) = saved
     system.quick_ring[:] = ring
 
 
@@ -162,3 +162,46 @@ def test_the_digital_faces_draw_a_12_hour_clock(system, face):
     clock.enabled = True
     clock.on_screen = None
     assert clock.update() is not None
+
+
+def test_the_step_goal_is_kept(system):
+    (system, path) = system
+    system.step_goal = 6000
+
+    manager = restart(path)
+
+    assert manager.step_goal == 6000
+
+
+def test_a_step_goal_not_offered_is_ignored(system):
+    (system, path) = system
+    path.write_text(json.dumps({'step_goal': 1234}))
+
+    manager = restart(path)
+
+    assert manager.step_goal == 10000
+
+
+def test_the_settings_app_cycles_the_step_goal(system):
+    (system, path) = system
+    from settings import SettingsApp
+    app = SettingsApp()
+    system.switch(app)
+    app._sett_index = app._settings.index('Step Goal')
+    app._draw()
+    before = system.step_goal
+
+    app.touch((wasp.EventType.TOUCH, 120, 110))
+
+    goals = wasp.STEP_GOALS
+    assert system.step_goal == goals[(goals.index(before) + 1) % len(goals)]
+    system.switch(system.quick_ring[0])
+
+
+@pytest.mark.parametrize('steps', (0, 4790, 20000))
+def test_the_steps_page_shows_progress_to_the_goal(system, steps):
+    (system, path) = system
+    wasp.watch.accel._steps = steps
+    system.switch([app for app in system.quick_ring if app.NAME == 'Steps'][0])
+    system._tick()
+    system.switch(system.quick_ring[0])
