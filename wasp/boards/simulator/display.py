@@ -15,12 +15,17 @@ import wasp
 
 DISPOFF = 0x28
 DISPON = 0x29
+VSCRDEF = 0x33
+VSCSAD = 0x37
 CASET = 0x2a
 RASET = 0x2b
 RAMWR = 0x2c
 
 WIDTH = 240
 HEIGHT = 240
+
+# The controller always has 320 rows of memory, whatever the panel shows.
+GRAM_HEIGHT = 320
 
 SKIN = {
     'fname' : 'wasp/boards/simulator/simulator_skin.png',
@@ -35,9 +40,38 @@ class ST7789Sim(object):
         self.x = 0
         self.y = 0
         self.colclip = [0, WIDTH-1]
-        self.rowclip = [0, HEIGHT-1]
+        self.rowclip = [0, GRAM_HEIGHT-1]
         self.cmd = 0
         self.mute = False
+
+        # The panel keeps 320 rows of pixels and shows a 240 row window onto
+        # them, so the simulator has to keep them too.
+        self.gram = np.zeros((WIDTH, GRAM_HEIGHT), dtype=np.uint32)
+        self.top_fixed = 0
+        self.scrolling = GRAM_HEIGHT
+        self.scroll_start = 0
+
+    def visible_rows(self):
+        """Work out which memory row the panel shows on each of its own rows."""
+        rows = np.arange(HEIGHT)
+        fixed = rows < self.top_fixed
+        offset = self.scroll_start - self.top_fixed
+        scrolled = self.top_fixed + (rows - self.top_fixed + offset) % self.scrolling
+
+        return np.where(fixed, rows, scrolled)
+
+    def refresh(self):
+        """Copy the visible window of display memory onto the screen."""
+        pixelview = sdl2.ext.pixels2d(windowsurface)
+
+        x = SKIN['adjust'][0]
+        y = SKIN['adjust'][1]
+        pixelview[x:x+WIDTH, y:y+HEIGHT] = self.gram[:, self.visible_rows()]
+
+        # Forcibly release the surface to ensure it is unlocked
+        del pixelview
+        if not self.mute:
+            window.refresh()
 
     def write(self, data):
         # Converting data to a memoryview ensures we act more like spi.write()
@@ -60,21 +94,32 @@ class ST7789Sim(object):
 
         elif self.cmd == CASET:
             self.colclip[0] = (data[0] << 8) + data[1]
-            assert(self.colclip[0] >= 0 and self.colclip[0] <= 240)
+            assert(self.colclip[0] >= 0 and self.colclip[0] <= WIDTH)
             self.colclip[1] = (data[2] << 8) + data[3]
-            assert(self.colclip[1] >= 0 and self.colclip[1] <= 240)
+            assert(self.colclip[1] >= 0 and self.colclip[1] <= WIDTH)
             self.x = self.colclip[0]
 
         elif self.cmd == RASET:
             self.rowclip[0] = (data[0] << 8) + data[1]
-            assert(self.rowclip[0] >= 0 and self.rowclip[0] <= 240)
+            assert(self.rowclip[0] >= 0 and self.rowclip[0] <= GRAM_HEIGHT)
             self.rowclip[1] = (data[2] << 8) + data[3]
-            assert(self.rowclip[1] >= 0 and self.rowclip[1] <= 240)
+            assert(self.rowclip[1] >= 0 and self.rowclip[1] <= GRAM_HEIGHT)
             self.y = self.rowclip[0]
 
+        elif self.cmd == VSCRDEF:
+            self.top_fixed = (data[0] << 8) + data[1]
+            self.scrolling = (data[2] << 8) + data[3]
+            bottom_fixed = (data[4] << 8) + data[5]
+            assert(self.top_fixed + self.scrolling + bottom_fixed == GRAM_HEIGHT)
+            self.refresh()
+
+        elif self.cmd == VSCSAD:
+            self.scroll_start = (data[0] << 8) + data[1]
+            assert(self.scroll_start >= 0 and self.scroll_start < GRAM_HEIGHT)
+            self.refresh()
+
         elif self.cmd == RAMWR:
-            #pixelview = sdl2.ext.PixelView(windowsurface)
-            pixelview = sdl2.ext.pixels2d(windowsurface)
+            gram = self.gram
 
             half = False
             for d in data:
@@ -91,10 +136,11 @@ class ST7789Sim(object):
                 pixel = (((rgb & 0xf800) << 8) +
                          ((rgb & 0x07e0) << 5) +
                          ((rgb & 0x001f) << 3))
-            
-                pv_x = self.x + SKIN['adjust'][0]
-                pv_y = self.y + SKIN['adjust'][1]
-                pixelview[pv_x][pv_y] = pixel
+
+                # Drawing that runs off the edge falls outside the panel's
+                # memory, so drop it rather than wrapping it onto a real row.
+                if self.x < WIDTH and self.y < GRAM_HEIGHT:
+                    gram[self.x][self.y] = pixel
 
                 self.x += 1
                 if self.x > self.colclip[1]:
@@ -102,11 +148,8 @@ class ST7789Sim(object):
                     self.y += 1
                 if self.y > self.rowclip[1]:
                     self.y = self.rowclip[0]
-            
-            # Forcibly release the surface to ensure it is unlocked
-            del pixelview
-            if not self.mute:
-                window.refresh()
+
+            self.refresh()
 
 class CST816SSim():
     def __init__(self):

@@ -47,6 +47,8 @@ class AppEntry():
         self.NAME = name
         self.no_except = no_except
         self._icon = None
+        # Set for an application that outlives being closed, so that opening
+        # it again reuses what is already there.
         self._app = None
 
     @property
@@ -61,10 +63,11 @@ class AppEntry():
     def load(self):
         """Import the module, build the application and drop the module.
 
-        An application that declares PERSIST is kept once built. One that
-        leaves a bound method with the scheduler is held alive by that
-        reference anyway, so building it a second time would only add a
-        duplicate.
+        An application that asked to be kept is built once and handed back
+        every time after that. The alarm app is one: it leaves a callback
+        with the scheduler so that its alarms still go off while it is
+        closed, and that callback holds the application anyway. Building a
+        second one would leave two in memory, each with its own alarms.
         """
         if self._app:
             return self._app
@@ -146,6 +149,10 @@ class Manager():
     def __init__(self):
         self.app = None
         self.app_entry = None
+        # Set while an application's own handler is running, and the
+        # application it asked to switch to.
+        self._dispatching = False
+        self._pending = None
 
         self.bar = widgets.StatusBar()
 
@@ -325,6 +332,24 @@ class Manager():
         self.app_entry = None
         gc.collect()
 
+    def _resolve(self, app):
+        """Build an application from its entry, if it is not built already.
+
+        :param app: An application or an AppEntry
+        :returns:   (application, entry or None), or None if there is
+                    nothing to switch to
+        """
+        if not isinstance(app, AppEntry):
+            return (app, None)
+        if self.app_entry is app and self.app:
+            return None
+        if app.no_except:
+            try:
+                return (app.load(), app)
+            except:
+                return None
+        return (app.load(), app)
+
     def switch(self, app):
         """Switch to the requested application.
 
@@ -336,28 +361,33 @@ class Manager():
         if isinstance(app, AppEntry):
             if self.app_entry is app and self.app:
                 return
-            entry = app
+            if self._dispatching:
+                # Wait until the handler that asked for this has returned,
+                # so the application it belongs to can actually be freed.
+                self._pending = app
+                return
             # Let the outgoing application go before building the new one.
             # Two of them will not fit at once, and the one being left is
             # usually the launcher, which is the larger.
             self._retire()
-            if entry.no_except:
-                try:
-                    app = entry.load()
-                except:
-                    app = None
-            else:
-                app = entry.load()
-            if not app:
-                # Nothing is running now, so fall back to the watch face
-                # rather than leave the system with no application at all.
-                face = self.quick_ring[0]
-                if entry is not face:
-                    self.switch(face)
-                return
-        else:
-            entry = None
 
+        loaded = self._resolve(app)
+        if not loaded:
+            # Nothing is running if the retire above emptied the foreground,
+            # so fall back to the watch face rather than leave the system
+            # with no application at all.
+            face = self.quick_ring[0]
+            if not self.app and app is not face:
+                self.switch(face)
+            return
+        self._switch(*loaded)
+
+    def _switch(self, app, entry):
+        """Switch to an application that is already built.
+
+        :param app:   The application to show
+        :param entry: The entry it came from, or None if it was passed in
+        """
         if self.app is app:
             return
 
@@ -385,9 +415,55 @@ class Manager():
         # else kept hold of it, so let the collector take it back.
         gc.collect()
         watch.display.mute(True)
+        watch.display.set_scroll_area()
+        watch.display.scroll(0)
         watch.drawable.reset()
         app.foreground()
         watch.display.mute(False)
+
+    def slide(self, app):
+        """Switch to an application by sliding it up into view.
+
+        Only an application that can draw itself a band at a time can slide,
+        because just 80 rows can be staged ahead of the display, so anything
+        else is switched the usual way.
+        """
+        if isinstance(app, AppEntry):
+            if self.app_entry is app and self.app:
+                return
+            self._retire()
+
+        loaded = self._resolve(app)
+        if not loaded:
+            face = self.quick_ring[0]
+            if not self.app and app is not face:
+                self.switch(face)
+            return
+        (app, entry) = loaded
+
+        if self.app is app or 'sliding' not in dir(app) \
+                or watch.display.scroll_offset:
+            self._switch(app, entry)
+            return
+
+        if self.app:
+            if 'background' in dir(self.app):
+                try:
+                    self.app.background()
+                except:
+                    self.app = True
+                    raise
+
+        # Clear out any configuration from the old application
+        self.event_mask = 0
+        self.tick_period_ms = 0
+        self.tick_expiry = None
+
+        self.app = app
+        self.app_entry = entry
+        gc.collect()
+        watch.drawable.reset()
+        app.sliding()
 
     def navigate(self, direction=None):
         """Navigate to a new application.
@@ -424,7 +500,7 @@ class Manager():
                 i = 0
             self.switch(app_list[i])
         elif direction == EventType.UP:
-            self.switch(self.launcher)
+            self.slide(self.launcher)
         elif direction == EventType.DOWN:
             if current is not app_list[0]:
                 self.switch(app_list[0])
@@ -604,13 +680,26 @@ class Manager():
                         ticks += 1
                     self.app.tick(ticks)
 
-            state = self._button.get_event()
-            if None != state:
-                self._handle_button(state)
+            # An application asking to switch while its own handler is
+            # running cannot be let go of, because the running frame still
+            # refers to it. Note the request and act on it below, once the
+            # handler has returned and the frame is gone.
+            self._dispatching = True
+            try:
+                state = self._button.get_event()
+                if None != state:
+                    self._handle_button(state)
 
-            event = watch.touch.get_event()
-            if event:
-                self._handle_touch(event)
+                event = watch.touch.get_event()
+                if event:
+                    self._handle_touch(event)
+            finally:
+                self._dispatching = False
+
+            if self._pending:
+                pending = self._pending
+                self._pending = None
+                self.switch(pending)
 
             if self.sleep_at and watch.rtc.uptime > self.sleep_at:
                 self.sleep()
