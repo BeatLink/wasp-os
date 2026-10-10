@@ -5,34 +5,33 @@
 ~~~~~~~~~~~~~~~
 """
 
+import cards
 import fonts
 import wasp
 
 class Button():
-    """A button with a text label."""
+    """A button with a text label, drawn as a card."""
     def __init__(self, x, y, w, h, label):
         self._im = (x, y, w, h, label)
 
     def draw(self):
         """Draw the button."""
-        bg = wasp.watch.drawable.darken(wasp.system.theme('ui'))
-        frame = wasp.system.theme('mid')
-        txt = wasp.system.theme('bright')
-        self.update(bg, frame, txt)
+        self.update(cards.COLOR, None, wasp.system.theme('bright'))
 
     def update(self, bg, frame, txt):
+        """Draw the button in the given colours.
+
+        :param bg:    Colour of the card
+        :param frame: Unused, kept so that older apps still run
+        :param txt:   Colour of the label
+        """
         draw = wasp.watch.drawable
         im = self._im
 
-        draw.fill(bg, im[0], im[1], im[2], im[3])
+        draw.rounded_rect(im[0], im[1], im[2], im[3], bg)
         draw.set_color(txt, bg)
         draw.set_font(fonts.sans24)
         draw.string(im[4], im[0], im[1]+(im[3]//2)-12, width=im[2])
-
-        draw.fill(frame, im[0],im[1],          im[2], 2)
-        draw.fill(frame, im[0], im[1]+im[3]-2, im[2], 2)
-        draw.fill(frame, im[0],         im[1], 2, im[3])
-        draw.fill(frame, im[0]+im[2]-2, im[1], 2, im[3])
 
     def touch(self, event):
         """Handle touch events."""

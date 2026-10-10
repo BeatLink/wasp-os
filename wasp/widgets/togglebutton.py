@@ -5,28 +5,27 @@
 ~~~~~~~~~~~~~~~~~~~~~~
 """
 
+import cards
 import wasp
 
 from widgets.button import Button
 
 class ToggleButton(Button):
-    """A button with a text label that can be toggled on and off."""
+    """A button with a text label that can be toggled on and off.
+
+    It is filled with the accent colour while it is on.
+    """
     def __init__(self, x, y, w, h, label):
         super().__init__(x, y, w, h, label)
         self.state = False
 
     def draw(self):
         """Draw the button."""
-        draw = wasp.watch.drawable
-
         if self.state:
-            bg = draw.darken(wasp.system.theme('ui'))
+            self.update(wasp.system.theme('ui'), None,
+                        wasp.system.theme('bright'))
         else:
-            bg = draw.darken(wasp.system.theme('mid'))
-        frame = wasp.system.theme('mid')
-        txt = wasp.system.theme('bright')
-
-        self.update(bg, frame, txt)
+            self.update(cards.COLOR, None, wasp.system.theme('mid'))
 
     def touch(self, event):
         """Handle touch events."""
