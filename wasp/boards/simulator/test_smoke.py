@@ -187,3 +187,88 @@ def test_the_step_graph_survives_a_watch_with_no_step_counter(system):
         app._update_graph()
     finally:
         system.steps = steps
+def test_swipe_up_slides_the_launcher_in(system):
+    assert wasp.watch.display.scroll_offset == 0
+
+    system.navigate(wasp.EventType.UP)
+
+    assert system.app_entry is system.launcher
+    # The launcher arrived by moving the display rather than redrawing it.
+    assert wasp.watch.display.scroll_offset == 240
+
+def test_leaving_a_slid_launcher_unscrolls(system):
+    system.navigate(wasp.EventType.UP)
+    system.switch(system.quick_ring[0])
+
+    assert wasp.watch.display.scroll_offset == 0
+
+def test_the_launcher_still_slides_the_second_time(system):
+    system.navigate(wasp.EventType.UP)
+    system.switch(system.quick_ring[0])
+    system.navigate(wasp.EventType.UP)
+
+    assert system.app_entry is system.launcher
+    assert wasp.watch.display.scroll_offset == 240
+
+def _paged_alarm_app():
+    from apps.user.alarm import AlarmApp
+    app = AlarmApp()
+    # Six alarms is two pages of four.
+    app.alarms = [[6 + i, 0, 0x80] for i in range(6)]
+    app.num_alarms = 6
+    return app
+
+def test_the_alarm_list_slides_between_pages(system):
+    app = _paged_alarm_app()
+    system.switch(app)
+    assert app._num_pages == 2
+
+    app.swipe((wasp.EventType.UP, 0, 0))
+    assert app.scroll == 1
+    # The second page arrived by moving the display rather than redrawing it.
+    assert wasp.watch.display.scroll_offset == 240
+
+    app.swipe((wasp.EventType.DOWN, 0, 0))
+    assert app.scroll == 0
+    assert wasp.watch.display.scroll_offset == 0
+
+def test_a_full_alarm_redraw_unscrolls(system):
+    app = _paged_alarm_app()
+    system.switch(app)
+    app.swipe((wasp.EventType.UP, 0, 0))
+
+    app._draw()
+
+    assert wasp.watch.display.scroll_offset == 0
+
+def _editing_alarm(system):
+    app = _paged_alarm_app()
+    system.switch(app)
+    app._open_editor(0)
+    return app
+
+def test_the_alarm_editor_steps_on_the_vertical_axis(system):
+    app = _editing_alarm(system)
+    assert app.step == 0
+
+    app.swipe((wasp.EventType.UP, 0, 0))
+    assert app.step == 1
+    app.swipe((wasp.EventType.DOWN, 0, 0))
+    assert app.step == 0
+
+def test_the_alarm_editor_ignores_the_horizontal_axis(system):
+    app = _editing_alarm(system)
+
+    app.swipe((wasp.EventType.LEFT, 0, 0))
+    app.swipe((wasp.EventType.RIGHT, 0, 0))
+
+    assert app.step == 0
+    # A sideways swipe must not leave the editor either.
+    assert app.page > -1
+
+def test_swiping_down_off_the_first_editor_page_closes_it(system):
+    app = _editing_alarm(system)
+
+    app.swipe((wasp.EventType.DOWN, 0, 0))
+
+    assert app.page == -1

@@ -96,19 +96,29 @@ def _bounding_box(s, font):
     return (w, h)
 
 @micropython.native
-def _draw_glyph(display, glyph, x, y, bgfg):
+def _draw_glyph(display, glyph, x, y, bgfg, first=0, rows=None):
+    """Draw a glyph, or the band of its rows from first onwards.
+
+    A sliding page is drawn a few rows at a time, so a glyph has to be
+    splittable at any row rather than only as a whole.
+    """
     (px, h, w) = glyph
+
+    if rows is None:
+        rows = h - first
+    if rows <= 0:
+        return
 
     buf = display.linebuffer[0:2*(w+1)]
     buf[2*w] = bgfg >> 24
     buf[2*w + 1] = (bgfg >> 16) & 0xff
     bytes_per_row = (w + 7) // 8
 
-    display.set_window(x, y, w+1, h)
+    display.set_window(x, y, w+1, rows)
     quick_write = display.quick_write
 
     display.quick_start()
-    for row in range(h):
+    for row in range(first, first + rows):
         _bitblit(buf, px[row*bytes_per_row:], bgfg, w)
         quick_write(buf)
     display.quick_end()
@@ -183,7 +193,8 @@ class Draw565(object):
             quick_write(buf[0:2*remaining])
         display.quick_end()
 
-    def rounded_rect(self, x, y, w, h, color=None, bg=0, radius=12):
+    def rounded_rect(self, x, y, w, h, color=None, bg=0, first=0, rows=None,
+                     radius=12):
         """Draw a solid colour rectangle with rounded corners.
 
         The corners are quarter circles worked out row by row, so any radius
@@ -202,18 +213,37 @@ class Draw565(object):
         :param h:      Height of the rectangle
         :param color:  Colour to draw with, defaults to the foreground colour
         :param bg:     Colour showing through outside the corners
+        :param first:  First row of the rectangle to draw, for a caller
+                       drawing a band of rows rather than the whole shape
+        :param rows:   How many rows to draw, defaulting to the rest of them
         :param radius: Corner radius, shrunk to fit a rectangle too small
                        for it
         """
         if color is None:
             color = self._bgfg & 0xffff
 
+        if rows is None:
+            rows = h - first
+        if rows <= 0:
+            return
+        last = first + rows
+
         r = min(radius, w // 2, h // 2)
-        if r:
-            self._arc_rows(x, y, w, r, h, 0, r, color, bg)
-        self.fill(color, x, y + r, w, h - 2 * r)
-        if r:
-            self._arc_rows(x, y, w, r, h, h - r, h, color, bg)
+
+        # The top corners occupy the first r rows and the bottom ones the
+        # last r, so each part is drawn only where it meets the band.
+        top = min(last, r)
+        if first < top:
+            self._arc_rows(x, y, w, r, h, first, top, color, bg)
+
+        body = max(first, r)
+        base = min(last, h - r)
+        if body < base:
+            self.fill(color, x, y + body, w, base - body)
+
+        bottom = max(first, h - r)
+        if bottom < last:
+            self._arc_rows(x, y, w, r, h, bottom, last, color, bg)
 
     @micropython.native
     def _arc_rows(self, x, y, w, r, h, start, end, color, bg):
@@ -237,24 +267,39 @@ class Draw565(object):
         display.quick_end()
 
     @micropython.native
-    def blit(self, image, x, y, fg=0xffff, c1=0x4a69, c2=0x7bef):
+    def blit(self, image, x, y, fg=0xffff, c1=0x4a69, c2=0x7bef,
+             first=0, rows=None):
         """Decode and draw an encoded image.
 
         :param image: Image data in either 1-bit RLE or 2-bit RLE formats. The
                       format will be autodetected
         :param x: X coordinate for the left-most pixels in the image
         :param y: Y coordinate for the top-most pixels in the image
+        :param first: First row of the image to draw
+        :param rows:  How many rows to draw, defaulting to the rest of them
         """
         if len(image) == 3:
             # Legacy 1-bit image
-            self.rleblit(image, (x, y), fg)
+            self.rleblit(image, (x, y), fg, first=first, rows=rows)
         else: #elif image[0] == 2:
             # 2-bit RLE image, (255x255, v1)
-            self._rle2bit(image, x, y, fg, c1, c2)
+            self._rle2bit(image, x, y, fg, c1, c2, first, rows)
 
     @micropython.native
-    def rleblit(self, image, pos=(0, 0), fg=0xffff, bg=0):
+    def rleblit(self, image, pos=(0, 0), fg=0xffff, bg=0, first=0, rows=None):
         """Decode and draw a 1-bit RLE image.
+
+        Part of an image can be drawn on its own, which lets a caller split
+        a drawing into pieces small enough to fit between two frames of an
+        animation. The rows before `first` are decoded and thrown away,
+        because a run length stream cannot be entered part way through.
+
+        :param image: The image, as a (width, height, runs) tuple
+        :param pos:   Where to put the first row that is drawn
+        :param fg:    Colour of the set pixels
+        :param bg:    Colour of the clear pixels
+        :param first: First row of the image to draw
+        :param rows:  How many rows to draw, defaulting to the rest
 
         .. deprecated:: M2
             Use :py:meth:`~.blit` instead.
@@ -263,11 +308,16 @@ class Draw565(object):
         write_data = display.write_data
         (sx, sy, rle) = image
 
-        display.set_window(pos[0], pos[1], sx, sy)
+        if rows is None:
+            rows = sy - first
+        last = first + rows
+
+        display.set_window(pos[0], pos[1], sx, rows)
 
         buf = display.linebuffer[0:2*sx]
         bp = 0
         color = bg
+        row = 0
 
         for rl in rle:
             while rl:
@@ -277,8 +327,12 @@ class Draw565(object):
                 rl -= count
 
                 if bp >= sx:
-                    write_data(buf)
+                    if row >= first:
+                        write_data(buf)
+                    row += 1
                     bp = 0
+                    if row >= last:
+                        return
 
             if color == bg:
                 color = fg
@@ -286,17 +340,28 @@ class Draw565(object):
                 color = bg
 
     @micropython.native
-    def _rle2bit(self, image, x, y, fg, c1, c2):
-        """Decode and draw a 2-bit RLE image."""
+    def _rle2bit(self, image, x, y, fg, c1, c2, first=0, rows=None):
+        """Decode and draw a 2-bit RLE image, or a band of its rows."""
         display = self._display
         quick_write = display.quick_write
         sx = image[1]
         sy = image[2]
         rle = memoryview(image)[3:]
 
-        display.set_window(x, y, sx, sy)
+        if rows is None:
+            rows = sy - first
+        if rows <= 0:
+            return
+        last = first + rows
 
-        if sx <= (len(display.linebuffer) // 4) and not bool(sy & 1):
+        display.set_window(x, y, sx, rows)
+
+        # Packing two image rows into one buffer row halves the work, but
+        # then a buffer row is not a row any more and cannot be counted
+        # against a range, so it is only used for a whole image.
+        if (first == 0 and last == sy
+                and sx <= (len(display.linebuffer) // 4)
+                and not bool(sy & 1)):
             sx *= 2
             sy //= 2
 
@@ -305,6 +370,7 @@ class Draw565(object):
         rl = 0
         buf = display.linebuffer[0:2*sx]
         bp = 0
+        row = 0
 
         display.quick_start()
         for op in rle:
@@ -336,8 +402,13 @@ class Draw565(object):
                 rl -= count
 
                 if bp >= sx:
-                    quick_write(buf)
+                    if row >= first:
+                        quick_write(buf)
+                    row += 1
                     bp = 0
+                    if row >= last:
+                        display.quick_end()
+                        return
         display.quick_end()
 
     def set_color(self, color, bg=0):
@@ -359,7 +430,7 @@ class Draw565(object):
         """
         self._font = font
 
-    def string(self, s, x, y, width=None, right=False):
+    def string(self, s, x, y, width=None, right=False, first=0, rows=None):
         """Draw a string at the supplied position.
 
         :param s:     String to render
@@ -373,11 +444,22 @@ class Draw565(object):
                       need to "undraw" it)
         :param right: If True (and width is set) then right justify rather than
                       centre the text
+        :param first: First row of the text to draw, for a caller drawing a
+                      band of rows rather than the whole line
+        :param rows:  How many rows to draw, defaulting to the rest of them
         """
         display = self._display
         bgfg = self._bgfg
         font = self._font
         bg = self._bgfg >> 16
+
+        height = font.height()
+        if rows is None:
+            rows = height - first
+        if rows <= 0:
+            return
+        # Everything below is drawn at the top of the band, not of the line.
+        y += first
 
         if width:
             (w, h) = _bounding_box(s, font)
@@ -387,16 +469,16 @@ class Draw565(object):
             else:
                 leftpad = (width - w) // 2
                 rightpad = width - w - leftpad
-            self.fill(bg, x, y, leftpad, h)
+            self.fill(bg, x, y, leftpad, rows)
             x += leftpad
 
         for ch in s:
             glyph = font.get_ch(ch)
-            _draw_glyph(display, glyph, x, y, bgfg)
+            _draw_glyph(display, glyph, x, y, bgfg, first, rows)
             x += glyph[2] + 1
 
         if width:
-            self.fill(bg, x, y, rightpad, h)
+            self.fill(bg, x, y, rightpad, rows)
 
     def bounding_box(self, s):
         """Return the bounding box of a string.
