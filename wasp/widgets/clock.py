@@ -40,12 +40,17 @@ class Clock:
 
         if self.enabled and (not on_screen
                 or now[4] != on_screen[4] or now[3] != on_screen[3]):
-            t1 = '{:02}:{:02}'.format(now[3], now[4])
-
             draw = wasp.watch.drawable
             draw.set_font(fonts.sans28)
             draw.set_color(wasp.system.theme('status-clock'))
-            draw.string(t1, 52, 4, 138)
+            if wasp.system.clock_24h:
+                draw.string('{:02}:{:02}'.format(now[3], now[4]), 52, 4, 138)
+            else:
+                draw.string('{}:{:02}'.format(wasp.system.display_hour(now[3]), now[4]),
+                            52, 4, 104)
+                # The 28 point font holds only digits, so the suffix is set in 24 point.
+                draw.set_font(fonts.sans24)
+                draw.string('pm' if now[3] >= 12 else 'am', 156, 7, 34)
 
         self.on_screen = now
         return now

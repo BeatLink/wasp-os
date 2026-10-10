@@ -287,8 +287,9 @@ class DualClockApp():
         # Draw the changeable parts of the watch face
         draw.blit(DIGITS[now[4] % 10], 40 + 1*90, 140, fg=hi)
         draw.blit(DIGITS[now[4] // 10], 40 + 0*90, 140, fg=hi)
-        draw.blit(DIGITS[now[3] % 10], 40 + 1*90, 40, fg=lo)
-        draw.blit(DIGITS[now[3] // 10], 40 + 0*90, 40, fg=lo)
+        hour = wasp.system.display_hour(now[3])
+        draw.blit(DIGITS[hour % 10], 40 + 1*90, 40, fg=lo)
+        draw.blit(DIGITS[hour // 10], 40 + 0*90, 40, fg=lo)
         #draw.roundRect(25, 135, 180, 100, 5, lo)
         # Record the minute that is currently being displayed
         self._min = now[4]

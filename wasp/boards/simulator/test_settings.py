@@ -15,12 +15,12 @@ def system(tmp_path, monkeypatch):
         system.secondary_init()
     path = tmp_path / 'settings.json'
     saved = (system._brightness, system._notifylevel, system._nfylev_ms, system._units,
-             system._theme, list(system.quick_ring), system._blank_after)
+             system._theme, list(system.quick_ring), system._blank_after, system._clock_24h)
     monkeypatch.setattr(system, 'settings_file', str(path))
     monkeypatch.setattr(system, '_settings_text', system._settings())
     yield system, path
     (system._brightness, system._notifylevel, system._nfylev_ms, system._units,
-     system._theme, ring, system._blank_after) = saved
+     system._theme, ring, system._blank_after, system._clock_24h) = saved
     system.quick_ring[:] = ring
 
 
@@ -114,3 +114,51 @@ def test_the_settings_app_cycles_the_screen_timeout(system):
     choices = wasp.BLANK_AFTER
     assert system.blank_after == choices[(choices.index(before) + 1) % len(choices)]
     system.switch(system.quick_ring[0])
+
+
+def test_the_clock_format_is_kept(system):
+    (system, path) = system
+    system.clock_24h = False
+
+    manager = restart(path)
+
+    assert manager.clock_24h is False
+
+
+def test_a_12_hour_clock_reads_hours_as_people_say_them(system):
+    (system, path) = system
+    system.clock_24h = False
+
+    assert [system.display_hour(h) for h in (0, 1, 11, 12, 13, 23)] == [12, 1, 11, 12, 1, 11]
+    system.clock_24h = True
+    assert [system.display_hour(h) for h in (0, 12, 23)] == [0, 12, 23]
+
+
+def test_the_settings_app_switches_the_clock_format(system):
+    (system, path) = system
+    from settings import SettingsApp
+    app = SettingsApp()
+    system.switch(app)
+    app._sett_index = app._settings.index('Time Format')
+    app._draw()
+
+    app.touch((wasp.EventType.TOUCH, 120, 110))
+
+    assert system.clock_24h is False
+    system.switch(system.quick_ring[0])
+
+
+@pytest.mark.parametrize('face', ('Clock', 'WeekClk'))
+def test_the_digital_faces_draw_a_12_hour_clock(system, face):
+    (system, path) = system
+    system.clock_24h = False
+    for (face_path, label) in appregistry.faces_list:
+        if label == face:
+            system.register(face_path, watch_face=True, name=label)
+    system.switch(system.quick_ring[0])
+    system.app._draw(True)
+
+    clock = system.bar._clock
+    clock.enabled = True
+    clock.on_screen = None
+    assert clock.update() is not None

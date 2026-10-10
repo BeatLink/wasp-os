@@ -274,6 +274,7 @@ class Manager():
         )
 
         self._blank_after = 15
+        self._clock_24h = True
 
         self._alarms = []
         self._brightness = 2
@@ -330,6 +331,7 @@ class Manager():
             'notify_level': self._notifylevel,
             'units': self._units,
             'blank_after': self._blank_after,
+            'clock_24h': self._clock_24h,
             'theme': list(self._theme),
             'face': [face.path, face.NAME] if isinstance(face, AppEntry) else None,
         })
@@ -377,6 +379,9 @@ class Manager():
             value = saved.get('blank_after')
             if value in BLANK_AFTER:
                 self._blank_after = value
+            value = saved.get('clock_24h')
+            if value in (True, False):
+                self._clock_24h = value
             value = saved.get('theme')
             if value and len(value) == len(self._theme):
                 self._theme = bytes(value)
@@ -477,6 +482,22 @@ class Manager():
     def blank_after(self, value):
         self._blank_after = value
         self._save_settings()
+
+    @property
+    def clock_24h(self):
+        """True to show the time as 24 hours, False for 12 hours."""
+        return self._clock_24h
+
+    @clock_24h.setter
+    def clock_24h(self, value):
+        self._clock_24h = value
+        self._save_settings()
+
+    def display_hour(self, hour):
+        """Return an hour of the day, 0 to 23, as the user prefers to read it."""
+        if self._clock_24h:
+            return hour
+        return hour % 12 or 12
 
     @property
     def units(self):
