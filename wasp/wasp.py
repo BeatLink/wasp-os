@@ -211,6 +211,10 @@ class PackageEntry(AppEntry):
         return self._icon if self._icon else None
 
 
+# The screen timeouts the Settings app offers, in seconds.
+BLANK_AFTER = (5, 10, 15, 30, 60)
+
+
 def _key_alarm(d):
     """Get a sort key for alarms."""
     return d[0]
@@ -269,7 +273,7 @@ class Manager():
                 b'\x00\x0f'     # contrast
         )
 
-        self.blank_after = 15
+        self._blank_after = 15
 
         self._alarms = []
         self._brightness = 2
@@ -325,6 +329,7 @@ class Manager():
             'brightness': self._brightness,
             'notify_level': self._notifylevel,
             'units': self._units,
+            'blank_after': self._blank_after,
             'theme': list(self._theme),
             'face': [face.path, face.NAME] if isinstance(face, AppEntry) else None,
         })
@@ -369,6 +374,9 @@ class Manager():
             value = saved.get('units')
             if value in ('Metric', 'Imperial'):
                 self._units = value
+            value = saved.get('blank_after')
+            if value in BLANK_AFTER:
+                self._blank_after = value
             value = saved.get('theme')
             if value and len(value) == len(self._theme):
                 self._theme = bytes(value)
@@ -459,6 +467,16 @@ class Manager():
             if app.NAME == cls if isinstance(cls, str) else isinstance(app, cls):
                 self.launcher_ring.remove(app)
                 break
+
+    @property
+    def blank_after(self):
+        """Seconds without input before the screen goes blank, one of BLANK_AFTER."""
+        return self._blank_after
+
+    @blank_after.setter
+    def blank_after(self, value):
+        self._blank_after = value
+        self._save_settings()
 
     @property
     def units(self):

@@ -39,7 +39,8 @@ class SettingsApp():
         self._yy = wasp.widgets.Spinner(160, 60, 20, 60, 2)
         self._units = ['Metric', 'Imperial']
         self._units_toggle = wasp.widgets.Button(32, 90, 176, 48, "Change")
-        self._settings = ['Brightness', 'Notification Level', 'Time', 'Date', 'Units']
+        self._timeout_toggle = wasp.widgets.Button(32, 90, 176, 48, "Change")
+        self._settings = ['Brightness', 'Notification Level', 'Screen Timeout', 'Time', 'Date', 'Units']
         self._sett_index = 0
         self._current_setting = self._settings[0]
 
@@ -56,6 +57,12 @@ class SettingsApp():
         elif self._current_setting == 'Notification Level':
             self._nfy_slider.touch(event)
             wasp.system.notify_level = self._nfy_slider.value + 1
+        elif self._current_setting == 'Screen Timeout':
+            if self._timeout_toggle.touch(event):
+                choices = wasp.BLANK_AFTER
+                current = wasp.system.blank_after
+                index = choices.index(current) if current in choices else -1
+                wasp.system.blank_after = choices[(index + 1) % len(choices)]
         elif self._current_setting == 'Time':
             if self._HH.touch(event) or self._MM.touch(event):
                 now = list(wasp.watch.rtc.get_localtime())
@@ -122,6 +129,8 @@ class SettingsApp():
             draw.string('DD    MM    YY',0,180, width=240)
         elif self._current_setting == 'Units':
             self._units_toggle.draw()
+        elif self._current_setting == 'Screen Timeout':
+            self._timeout_toggle.draw()
         self._scroll_indicator.draw()
         self._update()
         mute(False)
@@ -149,3 +158,5 @@ class SettingsApp():
             draw.string(say, 0, 150, width=240)
         elif self._current_setting == 'Units':
             draw.string(wasp.system.units, 0, 150, width=240)
+        elif self._current_setting == 'Screen Timeout':
+            draw.string('{} s'.format(wasp.system.blank_after), 0, 150, width=240)
