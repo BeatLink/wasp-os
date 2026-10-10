@@ -214,6 +214,9 @@ class PackageEntry(AppEntry):
 # The screen timeouts the Settings app offers, in seconds.
 BLANK_AFTER = (5, 10, 15, 30, 60)
 
+# The daily step goals the Settings app offers.
+STEP_GOALS = (2000, 4000, 6000, 8000, 10000, 12000, 15000, 20000)
+
 
 def _key_alarm(d):
     """Get a sort key for alarms."""
@@ -275,6 +278,7 @@ class Manager():
 
         self._blank_after = 15
         self._clock_24h = True
+        self._step_goal = 10000
 
         self._alarms = []
         self._brightness = 2
@@ -332,6 +336,7 @@ class Manager():
             'units': self._units,
             'blank_after': self._blank_after,
             'clock_24h': self._clock_24h,
+            'step_goal': self._step_goal,
             'theme': list(self._theme),
             'face': [face.path, face.NAME] if isinstance(face, AppEntry) else None,
         })
@@ -382,6 +387,9 @@ class Manager():
             value = saved.get('clock_24h')
             if value in (True, False):
                 self._clock_24h = value
+            value = saved.get('step_goal')
+            if value in STEP_GOALS:
+                self._step_goal = value
             value = saved.get('theme')
             if value and len(value) == len(self._theme):
                 self._theme = bytes(value)
@@ -481,6 +489,16 @@ class Manager():
     @blank_after.setter
     def blank_after(self, value):
         self._blank_after = value
+        self._save_settings()
+
+    @property
+    def step_goal(self):
+        """The number of steps the user aims for each day, one of STEP_GOALS."""
+        return self._step_goal
+
+    @step_goal.setter
+    def step_goal(self, value):
+        self._step_goal = value
         self._save_settings()
 
     @property

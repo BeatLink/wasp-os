@@ -137,6 +137,18 @@ class StepCounterApp():
         draw.set_color(draw.lighten(wasp.system.theme('spot1'), wasp.system.theme('contrast')))
         draw.string(t, 228-w, 132-18)
 
+        # The goal under the count, and a bar that fills in the accent colour once it is met.
+        goal = wasp.system.step_goal
+        draw.set_font(fonts.sans24)
+        draw.set_color(wasp.system.theme('mid'))
+        draw.string('of {}'.format(goal), 12, 160, width=216, right=True)
+        done = min(count, goal) * 216 // goal
+        if done:
+            colour = wasp.system.theme('ui') if count >= goal else wasp.system.theme('spot1')
+            draw.fill(colour, 12, 204, done, 8)
+        if done < 216:
+            draw.fill(wasp.system.theme('mid'), 12 + done, 204, 216 - done, 8)
+
     def _update_graph(self):
         draw = watch.drawable
         draw.set_font(fonts.sans24)

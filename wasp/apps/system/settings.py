@@ -41,7 +41,8 @@ class SettingsApp():
         self._units_toggle = wasp.widgets.Button(32, 90, 176, 48, "Change")
         self._timeout_toggle = wasp.widgets.Button(32, 90, 176, 48, "Change")
         self._format_toggle = wasp.widgets.Button(32, 90, 176, 48, "Change")
-        self._settings = ['Brightness', 'Notification Level', 'Screen Timeout', 'Time', 'Time Format', 'Date', 'Units']
+        self._goal_toggle = wasp.widgets.Button(32, 90, 176, 48, "Change")
+        self._settings = ['Brightness', 'Notification Level', 'Screen Timeout', 'Time', 'Time Format', 'Date', 'Units', 'Step Goal']
         self._sett_index = 0
         self._current_setting = self._settings[0]
 
@@ -64,6 +65,12 @@ class SettingsApp():
                 current = wasp.system.blank_after
                 index = choices.index(current) if current in choices else -1
                 wasp.system.blank_after = choices[(index + 1) % len(choices)]
+        elif self._current_setting == 'Step Goal':
+            if self._goal_toggle.touch(event):
+                goals = wasp.STEP_GOALS
+                current = wasp.system.step_goal
+                index = goals.index(current) if current in goals else -1
+                wasp.system.step_goal = goals[(index + 1) % len(goals)]
         elif self._current_setting == 'Time Format':
             if self._format_toggle.touch(event):
                 wasp.system.clock_24h = not wasp.system.clock_24h
@@ -137,6 +144,8 @@ class SettingsApp():
             self._timeout_toggle.draw()
         elif self._current_setting == 'Time Format':
             self._format_toggle.draw()
+        elif self._current_setting == 'Step Goal':
+            self._goal_toggle.draw()
         self._scroll_indicator.draw()
         self._update()
         mute(False)
@@ -168,3 +177,5 @@ class SettingsApp():
             draw.string('{} s'.format(wasp.system.blank_after), 0, 150, width=240)
         elif self._current_setting == 'Time Format':
             draw.string('24 hour' if wasp.system.clock_24h else '12 hour', 0, 150, width=240)
+        elif self._current_setting == 'Step Goal':
+            draw.string('{} steps'.format(wasp.system.step_goal), 0, 150, width=240)
