@@ -40,7 +40,8 @@ class SettingsApp():
         self._units = ['Metric', 'Imperial']
         self._units_toggle = wasp.widgets.Button(32, 90, 176, 48, "Change")
         self._timeout_toggle = wasp.widgets.Button(32, 90, 176, 48, "Change")
-        self._settings = ['Brightness', 'Notification Level', 'Screen Timeout', 'Time', 'Date', 'Units']
+        self._format_toggle = wasp.widgets.Button(32, 90, 176, 48, "Change")
+        self._settings = ['Brightness', 'Notification Level', 'Screen Timeout', 'Time', 'Time Format', 'Date', 'Units']
         self._sett_index = 0
         self._current_setting = self._settings[0]
 
@@ -63,6 +64,9 @@ class SettingsApp():
                 current = wasp.system.blank_after
                 index = choices.index(current) if current in choices else -1
                 wasp.system.blank_after = choices[(index + 1) % len(choices)]
+        elif self._current_setting == 'Time Format':
+            if self._format_toggle.touch(event):
+                wasp.system.clock_24h = not wasp.system.clock_24h
         elif self._current_setting == 'Time':
             if self._HH.touch(event) or self._MM.touch(event):
                 now = list(wasp.watch.rtc.get_localtime())
@@ -131,6 +135,8 @@ class SettingsApp():
             self._units_toggle.draw()
         elif self._current_setting == 'Screen Timeout':
             self._timeout_toggle.draw()
+        elif self._current_setting == 'Time Format':
+            self._format_toggle.draw()
         self._scroll_indicator.draw()
         self._update()
         mute(False)
@@ -160,3 +166,5 @@ class SettingsApp():
             draw.string(wasp.system.units, 0, 150, width=240)
         elif self._current_setting == 'Screen Timeout':
             draw.string('{} s'.format(wasp.system.blank_after), 0, 150, width=240)
+        elif self._current_setting == 'Time Format':
+            draw.string('24 hour' if wasp.system.clock_24h else '12 hour', 0, 150, width=240)
