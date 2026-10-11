@@ -17,14 +17,26 @@ endif
 BOARD ?= $(error Please set BOARD=)
 VERSION ?= $(patsubst v%,%,$(shell git describe --tags))
 
+# SD=s112 builds for the peripheral-only SoftDevice, 52 KB smaller than s132, into separate build directories.
+SD ?= s132
+ifneq ($(filter-out s112 s132,$(SD)),)
+$(error SD must be s112 or s132)
+endif
+# Each image names the SoftDevice it was linked for, so a bootloader on the other one refuses it.
+SD_FWID = $(if $(filter s112,$(SD)),0xB8,0xB7)
+SD_HEX = bootloader/lib/softdevice/$(SD)_nrf52_6.1.1/$(SD)_nrf52_6.1.1_softdevice.hex
+SD_SUFFIX = $(if $(filter s112,$(SD)),-s112)
+OUT = build-$(BOARD_SAFE)$(SD_SUFFIX)
+BL_BUILD = bootloader/_build-$(BOARD_SAFE)_nrf52832$(SD_SUFFIX)
+
 clean :
 	$(RM) -r \
-		bootloader/_build-$(BOARD)_nrf52832 \
-		reloader/build-$(BOARD) reloader/src/boards/$(BOARD)/bootloader.h \
+		bootloader/_build-$(BOARD)_nrf52832 bootloader/_build-$(BOARD)_nrf52832-s112 \
+		reloader/build-$(BOARD) reloader/build-$(BOARD)-s112 reloader/src/boards/$(BOARD)/bootloader.h \
 		micropython/mpy-cross/build \
-		micropython/ports/nrf/build-$(BOARD)-s132 \
+		micropython/ports/nrf/build-$(BOARD)-s132 micropython/ports/nrf/build-$(BOARD)-s112 \
 		apps/*.mpy faces/*.mpy \
-		build-$(BOARD) \
+		build-$(BOARD) build-$(BOARD)-s112 \
 		wasp/boards/$(BOARD)/watch.py \
 		wasp/apps/user \
 		wasp/boards/manifest_user_apps.py \
@@ -39,23 +51,24 @@ submodules :
 	(cd reloader; git submodule update --init)
 	(cd wasp/modules/bma42x-upy; git submodule update --init)
 
-bootloader: build-$(BOARD_SAFE)
-	$(RM) bootloader/_build-$(BOARD)_nrf52832//$(BOARD)_nrf52832_bootloader-*-nosd.hex
-	$(MAKE) -C bootloader/ BOARD=$(BOARD)_nrf52832 all genhex
+bootloader: $(OUT)
+	$(RM) $(BL_BUILD)/$(BOARD)_nrf52832_bootloader-*-nosd.hex
+	$(MAKE) -C bootloader/ BOARD=$(BOARD)_nrf52832 SD_NAME=$(SD) BUILD=$(BL_BUILD:bootloader/%=%) all genhex
 	$(PYTHON) tools/hexmerge.py \
-		bootloader/_build-$(BOARD)_nrf52832/$(BOARD)_nrf52832_bootloader-*-nosd.hex \
-		bootloader/lib/softdevice/s132_nrf52_6.1.1/s132_nrf52_6.1.1_softdevice.hex \
-		-o build-$(BOARD)/bootloader.hex
-	$(PYTHON) tools/hex2c.py build-$(BOARD)/bootloader.hex > \
+		$(BL_BUILD)/$(BOARD)_nrf52832_bootloader-*-nosd.hex \
+		$(SD_HEX) \
+		-o $(OUT)/bootloader.hex
+	$(PYTHON) tools/hex2c.py $(OUT)/bootloader.hex > \
 		reloader/src/boards/$(BOARD)/bootloader.h
 	$(PYTHON) -m nordicsemi dfu genpkg \
-		--bootloader bootloader/_build-$(BOARD)_nrf52832//$(BOARD)_nrf52832_bootloader-*-nosd.hex \
-		--softdevice bootloader/lib/softdevice/s132_nrf52_6.1.1/s132_nrf52_6.1.1_softdevice.hex \
-		build-$(BOARD)/bootloader-daflasher.zip
+		--bootloader $(BL_BUILD)/$(BOARD)_nrf52832_bootloader-*-nosd.hex \
+		--softdevice $(SD_HEX) \
+		$(OUT)/bootloader-daflasher.zip
 
-reloader: bootloader build-$(BOARD_SAFE)
-	$(MAKE) -C reloader/ BOARD=$(BOARD)
-	cp reloader/build-$(BOARD)/reloader*.zip build-$(BOARD)
+# The reloader embeds whichever bootloader was built last, so it always rebuilds after one.
+reloader: bootloader $(OUT)
+	$(MAKE) -C reloader/ BOARD=$(BOARD) OBJDIR=build-$(BOARD)$(SD_SUFFIX)
+	cp reloader/build-$(BOARD)$(SD_SUFFIX)/reloader*.zip $(OUT)
 
 softdevice:
 	micropython/ports/nrf/drivers/bluetooth/download_ble_stack.sh
@@ -73,20 +86,21 @@ $(error ACCEL must be bma421 or bma425)
 endif
 ACCEL_CFLAGS = $(if $(ACCEL),-DBMA42X_ONLY_$(shell echo $(ACCEL) | tr a-z A-Z))
 
-micropython: build-$(BOARD_SAFE) wasp/boards/manifest_user_apps.py wasp/boards/$(BOARD_SAFE)/watch.py micropython/mpy-cross/build/mpy-cross
-	$(RM) micropython/ports/nrf/build-$(BOARD)-s132/frozen_content.c
+micropython: $(OUT) wasp/boards/manifest_user_apps.py wasp/boards/$(BOARD_SAFE)/watch.py micropython/mpy-cross/build/mpy-cross
+	$(RM) micropython/ports/nrf/build-$(BOARD)-$(SD)/frozen_content.c
 	# The accelerometer choice is a compiler flag, which make does not track, so always rebuild that driver.
-	find micropython/ports/nrf/build-$(BOARD)-s132 -name 'bma42*.o' -delete 2>/dev/null || true
+	find micropython/ports/nrf/build-$(BOARD)-$(SD) -name 'bma42*.o' -delete 2>/dev/null || true
 	$(MAKE) -C micropython/ports/nrf \
-		BOARD=$(BOARD) SD=s132 \
+		BOARD=$(BOARD) SD=$(SD) \
 		MICROPY_VFS_LFS2=1 \
 		FROZEN_MANIFEST=$(CURDIR)/wasp/boards/$(BOARD)/manifest.py \
 		USER_C_MODULES=$(CURDIR)/wasp/modules \
 		CFLAGS_EXTRA="$(ACCEL_CFLAGS)"
 	$(PYTHON) -m nordicsemi dfu genpkg \
 		--dev-type 0x0052 \
-		--application micropython/ports/nrf/build-$(BOARD)-s132/firmware.hex \
-		build-$(BOARD)/micropython.zip
+		--sd-req $(SD_FWID) \
+		--application micropython/ports/nrf/build-$(BOARD)-$(SD)/firmware.hex \
+		$(OUT)/micropython.zip
 
 # The copies under wasp/apps/user are built from these sources, so editing an
 # app has to rebuild them or the firmware is flashed with stale code.
@@ -100,8 +114,8 @@ wasp/boards/manifest_user_apps.py: wasp.toml $(APP_SOURCES)
 	mkdir -p wasp/apps/user
 	$(PYTHON) tools/configure_wasp_apps.py wasp.toml
 
-build-$(BOARD_SAFE):
-	mkdir -p build-$(BOARD)
+$(OUT):
+	mkdir -p $(OUT)
 
 dfu:
 	$(PYTHON) -m nordicsemi dfu serial --package micropython.zip --port /dev/ttyACM0
@@ -112,7 +126,7 @@ flash:
 
 debug:
 	arm-none-eabi-gdb \
-		bootloader/_build-$(BOARD)_nrf52832/$(BOARD)_nrf52832_bootloader-*-nosd.out \
+		$(BL_BUILD)/$(BOARD)_nrf52832_bootloader-*-nosd.out \
 		-ex "target extended-remote /dev/ttyACM0" \
 		-ex "monitor swdp_scan" \
 		-ex "attach 1" \

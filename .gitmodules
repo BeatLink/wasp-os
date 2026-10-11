@@ -1,6 +1,7 @@
 [submodule "bootloader"]
 	path = bootloader
-	url = https://github.com/wasp-os/wasp-bootloader
+	url = https://github.com/BeatLink/wasp-bootloader
+	branch = wasp-os
 [submodule "micropython"]
 	path = micropython
 	url = https://github.com/BeatLink/micropython
@@ -26,7 +27,8 @@
 	branch = flashing-fixes
 [submodule "reloader"]
 	path = reloader
-	url = https://github.com/wasp-os/wasp-reloader
+	url = https://github.com/BeatLink/wasp-reloader
+	branch = master
 [submodule "wasp/modules/bma42x-upy"]
 	path = wasp/modules/bma42x-upy
 	url = https://github.com/BeatLink/bma42x-upy
