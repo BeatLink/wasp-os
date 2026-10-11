@@ -140,6 +140,11 @@ def _load(path):
         _unload(modname)
         gc.collect()
 
+def _shared(modname):
+    """Tell whether modname is a widget or font module, which any application may import."""
+    return modname[:8] == 'widgets.' or modname[:6] == 'fonts.'
+
+
 def _alarm_set():
     """Tell whether alarms.txt, as the alarm app writes it, holds an alarm that is switched on."""
     try:
@@ -177,6 +182,9 @@ def _unload(modname):
 def _pkgmgr(call, *args):
     """Make one call into the package manager without keeping it loaded."""
     loaded = 'pkgmgr' in sys.modules
+    if not loaded:
+        # Importing it needs large blocks, which a collection gives back.
+        gc.collect()
     import pkgmgr
     try:
         return getattr(pkgmgr, call)(*args)
@@ -270,6 +278,8 @@ class Manager():
         self._units = "Metric"
         # The settings as last written, or None until start up has read them back.
         self._settings_text = None
+        # Widget and font modules loaded at start up; any others are unloaded when their application is left.
+        self._resident = None
 
         self._theme = (
                 b'\x7b\xef'     # ble
@@ -321,6 +331,10 @@ class Manager():
             watch.display.mute(True)
             watch.backlight.set(self._brightness)
             self.sleep_at = watch.rtc.uptime + 90
+            # Load the widgets the system apps use now, so they sit at the bottom of the heap.
+            for name in ('Checkbox', 'Spinner', 'ConfirmationView'):
+                getattr(widgets, name)
+            self._resident = [m for m in sys.modules if _shared(m)]
             if watch.free:
                 gc.collect()
                 free = gc.mem_free()
@@ -658,7 +672,20 @@ class Manager():
         self._background()
         self.app = None
         self.app_entry = None
+        self._unload_shared()
         gc.collect()
+
+    def _unload_shared(self):
+        """Unload the widget and font modules loaded since start up."""
+        resident = self._resident
+        if resident is None:
+            return
+        for modname in [m for m in sys.modules if _shared(m) and m not in resident]:
+            _unload(modname)
+            # The widgets package also keeps each name it hands out.
+            for (name, leaf) in widgets._NAMES:
+                if modname == 'widgets.' + leaf:
+                    widgets.__dict__.pop(name, None)
 
     def _resolve(self, app):
         """Build an application from its entry, if it is not built already.

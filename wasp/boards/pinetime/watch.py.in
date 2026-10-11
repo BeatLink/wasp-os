@@ -109,6 +109,13 @@ try:
     # Mount the filesystem
     boot_msg("Init SPINOR")
     flash = FLASH(spi, (Pin('NOR_CS', Pin.OUT, value=1),))
+    # A sector cache in static RAM keeps the driver's 4 KB block off the heap.
+    import sectorcache
+    flash._cache = sectorcache.buffer
+    flash._mvd = memoryview(flash._cache)
+    flash.initialise()
+    del sectorcache
+    gc.collect()
     try:
         boot_msg("Mount FS")
         os.mount(flash, '/flash')

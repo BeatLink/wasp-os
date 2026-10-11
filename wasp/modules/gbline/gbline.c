@@ -7,6 +7,7 @@
 
 #include <string.h>
 
+#include "py/gc.h"
 #include "py/runtime.h"
 #include "shared/runtime/pyexec.h"
 
@@ -22,6 +23,11 @@ bool pyexec_repl_line_hook(vstr_t *line) {
     mp_map_elem_t *elem = mp_map_lookup(&mp_globals_get()->map, MP_OBJ_NEW_QSTR(MP_QSTR_GB), MP_MAP_LOOKUP);
     if (elem == NULL) {
         return false;
+    }
+
+    // A long message needs one block as long as itself, so collect first to free the lowest gap.
+    if (n > 256) {
+        gc_collect();
     }
 
     // Anything that is not JSON goes to the compiler, as it always did.
