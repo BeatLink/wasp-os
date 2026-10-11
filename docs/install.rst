@@ -9,48 +9,57 @@ Installation Guide
 Building wasp-os from source
 ----------------------------
 
-Install prerequisites
-~~~~~~~~~~~~~~~~~~~~~
+A build needs four things: an Arm cross compiler, a host C compiler, Python 3
+with a handful of modules, and the git submodules plus Nordic's SoftDevice.
+Set them up by hand, with Docker, or with Nix; the build steps afterwards are
+the same.
 
-Building wasp-os and launching the wasp-os simulator requires Python 3.6
-(or later) and the following python modules: click, numpy, pexpect, PIL
-(or Pillow), pydbus, pygobject, pyserial, pysdl2.
+Install prerequisites by hand
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On Debian Bookworm / Ubuntu 22.04 or later the required python modules can be
-obtained using the following commands:
+On Debian 12 (Bookworm), Ubuntu 22.04 or later, or Raspberry Pi OS:
 
 .. code-block:: sh
 
     sudo apt install \
-      wget git build-essential libsdl2-2.0-0 python3-cbor python3-click \
-      python3-gi python3-numpy python3-pexpect python3-pil python3-pip \
-      python3-pydbus python3-sdl2 python3-serial python3-tomli unzip
+      build-essential git make unzip wget \
+      gcc-arm-none-eabi libnewlib-arm-none-eabi \
+      libsdl2-2.0-0 python3 python3-cbor python3-click python3-cryptography \
+      python3-ecdsa python3-gi python3-numpy python3-pexpect python3-pil \
+      python3-pydbus python3-pytest python3-sdl2 python3-serial python3-tomli
 
-Additionally if you wish to regenerate the documentation you will require
-a complete sphinx toolchain:
+``build-essential`` provides the host compiler, which builds ``mpy-cross``,
+the tool that turns the Python sources into bytecode. ``gcc-arm-none-eabi``
+builds the firmware itself. wasp-os is tested with gcc 13; gcc 10 or later
+should work, and anything older than 7.3 breaks link-time optimisation. If
+your distribution's compiler is older, download the Arm GNU Toolchain
+(``arm-none-eabi``) from `Arm <https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads>`_
+and put its ``bin`` directory first on your ``PATH``. Check what you have with:
+
+.. code-block:: sh
+
+    arm-none-eabi-gcc --version
+
+On other distributions, install the same packages under their local names.
+If some of the Python modules are not packaged, install them all into a
+virtual environment instead:
+
+.. code-block:: sh
+
+    python3 -m venv ~/wasp-venv
+    . ~/wasp-venv/bin/activate
+    pip install -r wasp/requirements.txt
+
+``pygobject`` and ``pydbus`` only matter for flashing over Bluetooth with
+``wasptool``. pip builds ``pygobject`` from source, so it needs the cairo and
+gobject-introspection development packages; skip both modules if you only
+want to build.
+
+To rebuild this documentation you also need Sphinx:
 
 .. code-block:: sh
 
     sudo apt install sphinx graphviz python3-recommonmark
-
-Alternatively, if your operating system does not package some or any of
-the above mentioned Python modules then you can install all of them
-with pip instead:
-
-.. code-block:: sh
-
-    pip3 install --user -r wasp/requirements.txt
-
-You will also need a toolchain for the Arm Cortex-M4. wasp-os is developed and
-tested using the `GNU-RM toolchain
-<https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm>`_
-(10-2020-q4) from Arm.
-
-.. note::
-
-    There are known problems with toolchains older than gcc-7.3 when
-    link time optimization is enabled during the MicroPython build
-    (LTO is enabled by default).
 
 Install prerequisites via Docker
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,42 +90,32 @@ from within the Docker container.
 Install prerequisites via Nix
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note::
-
-    This setup method does not use the GCC version wasp-os is tested with,
-    but the gcc-arm-embedded package available from nixpkgs.
-    Though this usually works fine, if you encounter any problems please try the
-    manual installation above and report the issue in the issue tracker.
-
-To build wasp-os with `Nix <https://nixos.org/nix>`_, ensure it is installed
-then open a terminal and run the following command in the wasp-os repository:
+With `Nix <https://nixos.org/nix>`_ and flakes enabled, run this in the
+wasp-os repository:
 
 .. code-block:: sh
 
-    nix-shell tools/nix/shell.nix
+    nix develop
 
-Or if you are using the experimental flake commands:
-
-.. code-block:: sh
-
-    nix develop ./tools/nix
-
-You will be dropped in a shell where all required dependencies are available.
-All ``make`` commands should be usable from this shell.
+You get a shell with the Arm compiler, a Python with every module above, and
+SDL2. All ``make`` commands work from it.
 
 Build
 ~~~~~
 
-We can compile the modules required with the following commands:
+Fetch the submodules and the SoftDevice once, after cloning:
 
 .. code-block:: sh
 
-   make submodules
-   make softdevice
+    make submodules
+    make softdevice
 
-We can the compile source code that you will be flashing to your device with the following commands for each device:
+``make submodules`` fetches several nested repositories. Let it finish: an
+interrupted run leaves empty directories behind that later fail as missing
+files. Run it again after every ``git pull``, since a submodule left at an old
+commit can build without errors yet leave features out.
 
-For the pinetime we use:
+Then build the bootloader, the reloader and the firmware for your watch:
 
 .. code-block:: sh
 
@@ -149,6 +148,78 @@ To rebuild the documentation:
     make docs
 
 The docs will be browsable in ``docs/build/html`` as per Sphinx standards.
+
+Building on a Raspberry Pi or other Arm host
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The firmware does not care what machine builds it, but ``mpy-cross`` is
+compiled for the build machine and is less tested on Arm hosts. If it crashes,
+the build stops with an empty message:
+
+.. code-block:: text
+
+    error compiling draw565.py:
+
+    make[1]: *** [../../py/manifest.mk:53: build-pinetime-s132/frozen_content.c] Error 1
+
+``draw565.py`` is the first file that ``mpy-cross`` compiles to native machine
+code, so it is usually where a broken ``mpy-cross`` shows up. Confirm by
+running it by hand; an exit status of 139 means it crashed:
+
+.. code-block:: sh
+
+    ./micropython/mpy-cross/build/mpy-cross -march=armv7m -o /tmp/d.mpy wasp/draw565.py
+    echo $?
+
+First rebuild ``mpy-cross`` from clean, as below. If it still crashes, build
+it with the portable C fallbacks in place of its hand-written assembly:
+
+.. code-block:: sh
+
+    make -C micropython/mpy-cross clean
+    make -C micropython/mpy-cross \
+      CFLAGS_EXTRA="-DMICROPY_NLR_SETJMP=1 -DMICROPY_GCREGS_SETJMP=1"
+
+If neither helps, build on an x86-64 machine and copy ``build-pinetime/``
+across.
+
+Troubleshooting
+~~~~~~~~~~~~~~~
+
+Most build failures come from a missing setup step rather than from the code.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Error
+     - Cause and fix
+   * - ``nrfx.h: No such file or directory``
+     - Submodules missing. Run ``make submodules``.
+   * - ``No rule to make target 'bma42x-upy/BMA423-Sensor-API/bma4.c'``
+     - A nested submodule is missing. Run ``make submodules``.
+   * - ``No module named nordicsemi``
+     - ``tools/nrfutil`` is not checked out. Run ``make submodules``.
+   * - A missing file under ``s132_nrf52_6.1.1``
+     - The SoftDevice is missing. Run ``make softdevice``.
+   * - ``make softdevice`` says ``No such file or directory``
+     - The script needs ``/bin/bash``. Run
+       ``bash micropython/ports/nrf/drivers/bluetooth/download_ble_stack.sh``.
+   * - ``incompatible .mpy version``
+     - Files left over from an older MicroPython. Run
+       ``make BOARD=pinetime clean`` and build again.
+   * - ``error compiling <file>.py:`` with nothing after it
+     - ``mpy-cross`` crashed. See the section above.
+   * - ``No module named ...`` for any other module
+     - A Python module is missing. Install it as described above.
+
+When in doubt, a clean build fixes most problems that appear after a
+``git pull``:
+
+.. code-block:: sh
+
+    make submodules
+    make BOARD=pinetime clean
+    make -j `nproc` BOARD=pinetime all
 
 Custom builds
 -------------
