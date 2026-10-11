@@ -86,6 +86,9 @@ $(error ACCEL must be bma421 or bma425)
 endif
 ACCEL_CFLAGS = $(if $(ACCEL),-DBMA42X_ONLY_$(shell echo $(ACCEL) | tr a-z A-Z))
 
+# Read a symbol's address from the firmware the nrf port just linked, when the recipe line runs.
+elf_symbol = 0x$$(arm-none-eabi-nm micropython/ports/nrf/build-$(BOARD)-$(SD)/firmware.elf | awk '$$3 == "$(1)" {print $$1}')
+
 micropython: $(OUT) wasp/boards/manifest_user_apps.py wasp/boards/$(BOARD_SAFE)/watch.py micropython/mpy-cross/build/mpy-cross
 	$(RM) micropython/ports/nrf/build-$(BOARD)-$(SD)/frozen_content.c
 	# The accelerometer choice is a compiler flag, which make does not track, so always rebuild that driver.
@@ -96,10 +99,20 @@ micropython: $(OUT) wasp/boards/manifest_user_apps.py wasp/boards/$(BOARD_SAFE)/
 		FROZEN_MANIFEST=$(CURDIR)/wasp/boards/$(BOARD)/manifest.py \
 		USER_C_MODULES=$(CURDIR)/wasp/modules \
 		CFLAGS_EXTRA="$(ACCEL_CFLAGS)"
+ifneq ($(wildcard wasp/boards/$(BOARD_SAFE)/manifest_romfs.py),)
+	# The modules the firmware does not freeze go in a ROMFS image, written by the same package.
+	$(PYTHON) tools/romfs.py build wasp --manifest wasp/boards/$(BOARD)/manifest_romfs.py -o $(OUT)/romfs.img
+	$(PYTHON) tools/romfs.py hex micropython/ports/nrf/build-$(BOARD)-$(SD)/firmware.hex $(OUT)/romfs.img \
+		--address $(call elf_symbol,_micropy_hw_romfs_part0_start) \
+		--size $(call elf_symbol,_micropy_hw_romfs_part0_size) \
+		-o $(OUT)/firmware.hex
+else
+	cp micropython/ports/nrf/build-$(BOARD)-$(SD)/firmware.hex $(OUT)/firmware.hex
+endif
 	$(PYTHON) -m nordicsemi dfu genpkg \
 		--dev-type 0x0052 \
 		--sd-req $(SD_FWID) \
-		--application micropython/ports/nrf/build-$(BOARD)-$(SD)/firmware.hex \
+		--application $(OUT)/firmware.hex \
 		$(OUT)/micropython.zip
 
 # The copies under wasp/apps/user are built from these sources, so editing an

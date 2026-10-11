@@ -4,33 +4,12 @@
 import os, sys
 
 sys.path.append(os.path.dirname(os.getcwd()))
-import manifest_240x240
-import manifest_user_apps
+sys.path.append(os.getcwd())
+import manifest_romfs
 
 freeze('.', 'watch.py', opt=3)
-freeze('../..', manifest_240x240.manifest + manifest_user_apps.manifest +
-    (
-        'boot.py',
-        'companion.py',
-        'draw565.py',
-        'events.py',
-        'drivers/bma421.py',
-        'drivers/battery.py',
-        'drivers/cst816s.py',
-        'drivers/hrs3300.py',
-        'drivers/nrf_rtc.py',
-        'drivers/signal.py',
-        'drivers/st7789.py',
-        'drivers/vibrator.py',
-        'gadgetbridge.py',
-        'pin_handler.py',
-        'pkgmgr.py',
-        'ppg.py',
-        'shell.py',
-        'wasp.py',
-    ),
-    opt=3
-)
+# The rest of wasp-os goes in the ROMFS image; see manifest_romfs.py.
+freeze('../..', manifest_romfs.frozen, opt=3)
 freeze('../../drivers/flash',
     (
         'bdevice.py',
