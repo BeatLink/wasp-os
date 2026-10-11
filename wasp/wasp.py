@@ -218,6 +218,11 @@ BLANK_AFTER = (5, 10, 15, 30, 60)
 # The daily step goals the Settings app offers.
 STEP_GOALS = (2000, 4000, 6000, 8000, 10000, 12000, 15000, 20000)
 
+# The launcher styles the Settings app offers, and the application behind each.
+LAUNCHERS = ('Grid', 'List')
+_LAUNCHER_PATHS = ('apps.system.grid_launcher.GridLauncherApp',
+                   'apps.system.list_launcher.ListLauncherApp')
+
 # The gesture the touch controller reports for a double tap.
 _DOUBLE_TAP = const(0x0b)
 
@@ -255,8 +260,8 @@ class Manager():
         # left, like every other application. Holding it meant the watch
         # face, the launcher and whatever was opened from it were all in
         # memory at once, which the alarm app could not fit alongside.
-        self.launcher = AppEntry('apps.system.grid_launcher.GridLauncherApp',
-                                 'Launcher')
+        self._launcher_style = LAUNCHERS[0]
+        self.launcher = AppEntry(_LAUNCHER_PATHS[0], 'Launcher')
         self.launcher_ring = []
         self.notifications = {}
         self.musicstate = {}
@@ -345,6 +350,7 @@ class Manager():
             'blank_after': self._blank_after,
             'clock_24h': self._clock_24h,
             'step_goal': self._step_goal,
+            'launcher_style': self._launcher_style,
             'wake_on_raise': self._wake_on_raise,
             'wake_on_tap': self._wake_on_tap,
             'theme': list(self._theme),
@@ -400,6 +406,9 @@ class Manager():
             value = saved.get('step_goal')
             if value in STEP_GOALS:
                 self._step_goal = value
+            value = saved.get('launcher_style')
+            if value in LAUNCHERS:
+                self._set_launcher(value)
             value = saved.get('wake_on_raise')
             if value in (True, False):
                 self._wake_on_raise = value
@@ -536,6 +545,23 @@ class Manager():
     def step_goal(self, value):
         self._step_goal = value
         self._save_settings()
+
+    @property
+    def launcher_style(self):
+        """How the launcher shows the applications, one of LAUNCHERS."""
+        return self._launcher_style
+
+    @launcher_style.setter
+    def launcher_style(self, value):
+        self._set_launcher(value)
+        self._save_settings()
+
+    def _set_launcher(self, style):
+        """Make the launcher the one for a style, built next time it opens."""
+        if style != self._launcher_style:
+            self._launcher_style = style
+            self.launcher = AppEntry(_LAUNCHER_PATHS[LAUNCHERS.index(style)],
+                                     'Launcher')
 
     @property
     def clock_24h(self):

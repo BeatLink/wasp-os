@@ -17,6 +17,8 @@ def system(tmp_path, monkeypatch):
     saved = (system._brightness, system._notifylevel, system._nfylev_ms, system._units,
              system._theme, list(system.quick_ring), system._blank_after, system._clock_24h, system._step_goal)
     monkeypatch.setattr(system, 'settings_file', str(path))
+    monkeypatch.setattr(system, '_launcher_style', system._launcher_style)
+    monkeypatch.setattr(system, 'launcher', system.launcher)
     monkeypatch.setattr(system, '_settings_text', system._settings())
     yield system, path
     (system._brightness, system._notifylevel, system._nfylev_ms, system._units,
@@ -147,6 +149,43 @@ def test_the_settings_app_switches_the_clock_format(system):
     app.touch((wasp.EventType.TOUCH, x + w // 2, y + 20))
 
     assert system.clock_24h is False
+    system.switch(system.quick_ring[0])
+
+
+def test_the_launcher_style_is_kept(system):
+    (system, path) = system
+    system.launcher_style = 'List'
+
+    manager = restart(path)
+
+    assert manager.launcher_style == 'List'
+    assert manager.launcher.path == 'apps.system.list_launcher.ListLauncherApp'
+
+
+def test_a_launcher_style_not_offered_is_ignored(system):
+    (system, path) = system
+    path.write_text(json.dumps({'launcher_style': 'Carousel'}))
+
+    manager = restart(path)
+
+    assert manager.launcher_style == 'Grid'
+
+
+def test_the_settings_app_switches_the_launcher(system):
+    (system, path) = system
+    from settings import SettingsApp
+    from apps.system.list_launcher import ListLauncherApp
+    app = SettingsApp()
+    system.switch(app)
+    app._sett_index = app._settings.index('Launcher')
+    app._draw()
+    (x, y, w) = app._cell(1, 2)
+
+    app.touch((wasp.EventType.TOUCH, x + w // 2, y + 20))
+    system.switch(system.launcher)
+
+    assert system.launcher_style == 'List'
+    assert isinstance(system.app, ListLauncherApp)
     system.switch(system.quick_ring[0])
 
 

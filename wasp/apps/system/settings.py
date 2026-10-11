@@ -56,7 +56,7 @@ _VALUE_H = _ROW_TOPS[2] + _ROW_H - _BODY_Y
 _TEXT_Y = (_ROW_H - 24) // 2
 
 _SETTINGS = ('Brightness', 'Notification Level', 'Screen Timeout', 'Wake',
-             'Time', 'Time Format', 'Date', 'Units', 'Step Goal')
+             'Time', 'Time Format', 'Date', 'Units', 'Step Goal', 'Launcher')
 # The wake gestures, each switched on and off by its own card.
 _WAKES = ('Raise to wake', 'Tap to wake')
 _LEVELS = ('Low', 'Mid', 'High')
@@ -104,6 +104,8 @@ class SettingsApp():
             return _FORMATS
         if s == 'Units':
             return _UNITS
+        if s == 'Launcher':
+            return wasp.LAUNCHERS
         return None
 
     def _chosen(self):
@@ -119,6 +121,8 @@ class SettingsApp():
             return choices.index(current) if current in choices else -1
         if s == 'Time Format':
             return 1 if wasp.system.clock_24h else 0
+        if s == 'Launcher':
+            return wasp.LAUNCHERS.index(wasp.system.launcher_style)
         return _UNITS.index(wasp.system.units)
 
     def _choose(self, i):
@@ -132,6 +136,8 @@ class SettingsApp():
             wasp.system.blank_after = wasp.BLANK_AFTER[i]
         elif s == 'Time Format':
             wasp.system.clock_24h = i == 1
+        elif s == 'Launcher':
+            wasp.system.launcher_style = wasp.LAUNCHERS[i]
         else:
             wasp.system.units = _UNITS[i]
 

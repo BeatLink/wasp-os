@@ -8,12 +8,8 @@
     :width: 179
 
 An alternative to the grid launcher. It lists four applications per page, each
-on a full width tile showing its icon and name. It is left out of the firmware
-to save flash, so add it to wasp/boards/manifest_240x240.py, then select it
-from main.py after the system has started::
-
-    from apps.system.list_launcher import ListLauncherApp
-    wasp.system.launcher = ListLauncherApp()
+on a full width tile showing its icon and name. Choose it on the Launcher page
+of the Settings app, or set ``wasp.system.launcher_style = 'List'``.
 """
 
 import wasp

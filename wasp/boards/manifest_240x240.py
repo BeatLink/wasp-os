@@ -5,6 +5,7 @@
 manifest = (
     'apps/system/call.py',
     'apps/system/grid_launcher.py',
+    'apps/system/list_launcher.py',
     'apps/system/pager.py',
     'apps/system/software.py',
     'apps/system/settings.py',

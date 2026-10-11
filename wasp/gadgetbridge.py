@@ -18,7 +18,7 @@ Currently implemented messages are:
    currently playing music track
  * t:"call", cmd:"accept/incoming/outgoing/reject/start/end", name: "name", number: "+491234" - call
  * t:"settings", brightness,notify_level,units,blank_after,clock_24h,
-   step_goal,theme,face - change the given settings, then reply with all of
+   step_goal,launcher_style,theme,face - change the given settings, then reply with all of
    them
  * t:"steps", y,m,d:int - reply with that day's step counts
  * t:"http", id:string, resp|err:string - answer a request made by http()

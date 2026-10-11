@@ -24,6 +24,7 @@ _CHOICES = (
     ('units', ('Metric', 'Imperial')),
     ('blank_after', wasp.BLANK_AFTER),
     ('step_goal', wasp.STEP_GOALS),
+    ('launcher_style', wasp.LAUNCHERS),
 )
 
 # The most alarms the alarm app holds.
@@ -102,6 +103,7 @@ def settings(cmd):
         'blank_after': system.blank_after,
         'clock_24h': system.clock_24h,
         'step_goal': system.step_goal,
+        'launcher_style': system.launcher_style,
         'theme': list(system._theme),
         'face': face.path if isinstance(face, wasp.AppEntry) else None,
         'faces': faces,

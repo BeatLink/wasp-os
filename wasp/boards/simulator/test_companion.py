@@ -29,6 +29,8 @@ def system(monkeypatch):
              system._theme, system._blank_after, system._clock_24h, system._step_goal)
     monkeypatch.setattr(system, 'quick_ring', list(system.quick_ring))
     monkeypatch.setattr(system, 'launcher_ring', list(system.launcher_ring))
+    monkeypatch.setattr(system, '_launcher_style', system._launcher_style)
+    monkeypatch.setattr(system, 'launcher', system.launcher)
     before = list(system._alarms)
     system.switch(system.quick_ring[0])
     yield system
@@ -53,7 +55,7 @@ def gb(capsys, msg):
 
 
 SETTINGS_KEYS = {'t', 'brightness', 'notify_level', 'units', 'blank_after', 'clock_24h',
-                 'step_goal', 'theme', 'face', 'faces'}
+                 'step_goal', 'launcher_style', 'theme', 'face', 'faces'}
 
 
 def test_settings_read_replies_with_every_setting(system, capsys):
@@ -72,10 +74,12 @@ def test_settings_write_applies_each_key(system, capsys):
 
     (reply,) = gb(capsys, {'t': 'settings', 'brightness': 1, 'notify_level': 3,
                            'units': 'Imperial', 'blank_after': 30, 'clock_24h': False,
-                           'step_goal': 8000, 'theme': theme, 'face': face})
+                           'step_goal': 8000, 'launcher_style': 'List', 'theme': theme,
+                           'face': face})
 
     assert (system.brightness, system.notify_level, system.units) == (1, 3, 'Imperial')
     assert (system.blank_after, system.clock_24h, system.step_goal) == (30, False, 8000)
+    assert system.launcher_style == 'List'
     assert list(system._theme) == theme
     assert system.quick_ring[0].path == face and system.quick_ring[0].NAME == label
     assert reply['face'] == face
