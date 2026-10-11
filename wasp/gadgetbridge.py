@@ -21,10 +21,12 @@ Currently implemented messages are:
    step_goal,launcher_style,theme,face - change the given settings, then reply with all of
    them
  * t:"steps", y,m,d:int - reply with that day's step counts
+ * t:"status" - reply with the battery level, voltage, charging and steps
  * t:"http", id:string, resp|err:string - answer a request made by http()
 
 The watch sends JSON lines back, each tagged with t: "settings", "alarm",
-"steps", "call" (n:"ACCEPT/REJECT/IGNORE"), "http" (url, id), "music",
+"steps", "status", "call" (n:"ACCEPT/REJECT/IGNORE"), "http" (url, id, and
+method and body when not a plain GET), "music",
 "findPhone" or "error".
 """
 
@@ -61,10 +63,11 @@ def _error(msg):
     send({'t': 'error', 'msg': msg})
 
 
-def http(url, callback):
+def http(url, callback, method='GET', body=None):
     """Ask the phone to fetch a URL, and call callback(resp, err) when it answers.
 
-    Exactly one of resp and err is a string, the other is None.
+    Exactly one of resp and err is a string, the other is None. method is any
+    HTTP method, and body is text sent with it.
     """
     global _http_id
     _http_id += 1
@@ -72,7 +75,12 @@ def http(url, callback):
     if len(_http) >= _HTTP_PENDING:
         del _http[str(min([int(k) for k in _http]))]
     _http[key] = callback
-    send({'t': 'http', 'url': url, 'id': key})
+    msg = {'t': 'http', 'url': url, 'id': key}
+    if method != 'GET':
+        msg['method'] = method
+    if body is not None:
+        msg['body'] = body
+    send(msg)
 
 
 def _companion(task, cmd):
@@ -146,7 +154,7 @@ def GB(cmd):
             _call(cmd)
         elif task == 'http':
             _answer(cmd)
-        elif task in ('settings', 'alarm', 'steps'):
+        elif task in ('settings', 'alarm', 'steps', 'status'):
             _companion(task, cmd)
         else:
             pass

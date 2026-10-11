@@ -3,8 +3,8 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Handles the Gadgetbridge messages that read and change the watch's settings,
-its alarms and its step history. Each reply is one JSON line tagged with the
-message's own name.
+its alarms and its step history, and that report its battery and step count.
+Each reply is one JSON line tagged with the message's own name.
 
 These are rare and larger than the other messages, so gadgetbridge.py imports
 this module for each one and lets go of it afterwards.
@@ -248,3 +248,19 @@ def steps(cmd):
     write(', "now": ')
     write(json.dumps(now))
     write('}\r\n')
+
+
+def status(cmd):
+    """Reply with the battery level, its voltage, whether it is charging, and today's steps."""
+    watch = wasp.watch
+    try:
+        steps = watch.accel.steps
+    except Exception:
+        steps = None
+    send({
+        't': 'status',
+        'battery': watch.battery.level(),
+        'mv': watch.battery.voltage_mv(),
+        'charging': bool(watch.battery.charging()),
+        'steps': steps,
+    })

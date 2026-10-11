@@ -36,6 +36,25 @@ snake_icon = (
 import wasp
 from random import randint
 
+# Where the high score is kept, so it survives a restart and a phone can back it up.
+_HIGHSCORE_FILE = 'snake.txt'
+
+
+def _load_highscore():
+    try:
+        with open(_HIGHSCORE_FILE) as f:
+            return max(1, int(f.read()))
+    except (OSError, ValueError):
+        return 1
+
+
+def _save_highscore(value):
+    try:
+        with open(_HIGHSCORE_FILE, 'w') as f:
+            f.write(str(value))
+    except OSError:
+        pass
+
 class SnakeApp():
     NAME = 'Snake'
     ICON = snake_icon
@@ -44,7 +63,8 @@ class SnakeApp():
         self.running = True
         self.snake = Snake()
         self.food_location()
-        self.highscore = 1
+        # The longest snake so far, one more than the score shown.
+        self.highscore = _load_highscore()
 
 
     def foreground(self):
@@ -98,6 +118,7 @@ class SnakeApp():
         if (self.snake.end_game()):
                 if len(self.snake.body) > self.highscore:
                     self.highscore = len(self.snake.body)
+                    _save_highscore(self.highscore)
                 self.running = False
                 wasp.watch.vibrator.pulse()
                 self.snake = Snake()

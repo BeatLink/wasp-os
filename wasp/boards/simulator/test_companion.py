@@ -367,3 +367,37 @@ def test_vibrate_buzzes_n_times(monkeypatch, capsys, n, buzzes):
     assert gb(capsys, {'t': 'vibrate', 'n': n}) == []
 
     assert len(pulses) == buzzes
+
+
+def test_http_sends_the_method_and_body_when_given(http, capsys):
+    http.http('https://example.org/c', lambda resp, err: None, 'POST', '{"a": 1}')
+    http.http('https://example.org/d', lambda resp, err: None)
+
+    (post, get) = lines(capsys)
+
+    assert (post['method'], post['body']) == ('POST', '{"a": 1}')
+    assert 'method' not in get and 'body' not in get
+
+
+def test_status_reports_battery_and_steps(system, capsys, accel):
+    (reply,) = gb(capsys, {'t': 'status'})
+
+    assert reply['t'] == 'status'
+    assert 0 <= reply['battery'] <= 100
+    assert reply['mv'] > 0
+    assert reply['charging'] in (True, False)
+    assert reply['steps'] == wasp.watch.accel.steps
+
+
+def test_snake_keeps_its_high_score_across_a_restart(flash):
+    from apps.snake.app import SnakeApp
+    game = SnakeApp()
+    assert game.highscore == 1
+
+    # A game ends with a longer snake than before.
+    game.snake.body = [[0, 0]] * 5
+    game.snake.end_game = lambda: True
+    game.update()
+
+    assert (flash / 'snake.txt').read_text() == '5'
+    assert SnakeApp().highscore == 5
