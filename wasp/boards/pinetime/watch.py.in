@@ -15,6 +15,7 @@ rtc.counter.start()
 
 import gc
 import os
+import sys
 import time
 
 import draw565
@@ -122,6 +123,18 @@ try:
             f.write('''\
 #include('main.py')
 ''')
+
+    # MicroPython mounts the ROMFS image at /rom and puts it after the frozen modules.
+    # Move it ahead of them so the image can replace them, or drop it in safe mode.
+    try:
+        sys.path.remove('/rom/lib')
+        sys.path.remove('/rom')
+        if safe_mode:
+            os.umount('/rom')
+        else:
+            sys.path.insert(1, '/rom')
+    except (ValueError, OSError):
+        pass
 
     # Only change directory if the button is not pressed (this will
     # allow us access to fix any problems with main.py)!
